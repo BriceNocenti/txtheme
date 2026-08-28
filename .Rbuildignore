@@ -1,0 +1,5 @@
+^_extensions$
+^dev$
+^\.Rproj\.user$
+^.*\.Rproj$
+^\.github$

@@ -1,0 +1,9 @@
+<!-- PURPOSE: what txtheme adds to a consumer's <head>, so the consumer's _pkgdown.yml stays one line.
+     ROLE: shadows pkgdown's own in-header.html, whose single line is kept BELOW. pkgdown searches
+       the site's own pkgdown/templates/ first, then this package's, then its own -- so a site can
+       always shadow this back, and must then carry pkgdown's line itself.
+     WARNING: the last line is pkgdown's, not ours. Dropping it silently kills
+       `template: includes: in_header:` for every site using txtheme. -->
+<script src="{{#site}}{{root}}{{/site}}txtheme-at.js" defer></script>
+{{#yaml}}{{#txtheme}}{{#annotations}}<link href="{{#site}}{{root}}{{/site}}txtheme-annotations.css" rel="stylesheet">{{/annotations}}{{/txtheme}}{{/yaml}}
+{{#includes}}{{{in_header}}}{{/includes}}

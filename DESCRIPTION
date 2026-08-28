@@ -1,0 +1,27 @@
+Package: txtheme
+Title: One Palette for pkgdown, Quarto and the Editor
+Version: 0.1.0
+Authors@R:
+    person(given = "Brice",
+           family = "Nocenti",
+           role = c("aut", "cre"),
+           email = "brice.nocenti@protonmail.com")
+Description: A colour is decided once, in one declared grid, and every consumer
+  reads it: a pkgdown site through 'template: package: txtheme', a Quarto
+  document through the bundled extension, and the editor through a ready
+  'textMateRules' block. Ships the generated stylesheets, pandoc '.theme' files
+  and unified '_brand.yml', plus the OKLCH and APCA colour maths the palette was
+  designed with.
+URL: https://github.com/BriceNocenti/txtheme
+BugReports: https://github.com/BriceNocenti/txtheme/issues
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Suggests:
+    pkgdown,
+    sass,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Depends:
+    R (>= 4.1.0)
