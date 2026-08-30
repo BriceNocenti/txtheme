@@ -5,45 +5,26 @@
 # `format: html:`; nested there it is silently ignored, the two stylesheets come out identical,
 # and none of these colours appear.
 #
-# Only the dark half of the palette is decided, so only `dark:` is written under each role.
-# That is safe, not a compromise: measured on Quarto 1.10.18, a role names a mode or is ignored
-# in it -- `background: {dark: page}` leaves the light stylesheet on #ffffff.
+# WHY THE ROLES ARE HEXES AND THE PALETTE IS SHORT. A palette entry must be a single string --
+# Quarto's schema refuses `{light:, dark:}` there -- while a role takes both. So the roles are
+# stated per mode as literal colours, and the palette names only what is the SAME in both: the
+# annotation hues, which sit at medium OKLCH lightness by construction and clear either ground.
+# Those are also the ones a document actually names, as `var(--brand-concept)` and friends, in
+# both stylesheets and with no hex leaving txtheme.
 #
 # WARNING: the palette's NAMES share a namespace with the roles. An entry named after a role
 #   (link, primary, danger, ...) is promoted to that role in BOTH modes, silently -- which is
-#   why the blue below is `accent` and not `link`. txtheme refuses such a name at load.
+#   why the blue is `accent` and not `link`. txtheme refuses such a name at load.
 #
-# The palette also reaches BOTH stylesheets as `--brand-<name>` custom properties, so a document
-# can use any of these colours by name without a hex leaving txtheme.
+# The theme's own chrome is NOT here: _extensions/txtheme sets it as bootstrap SASS variables,
+# which is the half of the job a brand file cannot do.
 meta:
   name: txtheme
 color:
   palette:
-    page: "#21252b"
-    panel: "#282c34"
-    ink: "#CDCBBC"
-    emphasis: "#fcfcfa"
-    border: "#3e4451"
-    accent: "#61afef"
-    accent-hover: "#81bff2"
-    code-page: "#1f1f1f"
-    inline-code: "#fc9867"
-    heading-1: "#FEF1A1"
-    heading-2: "#F5E9A3"
-    heading-3: "#ECE2A4"
-    heading-4: "#E5DB9D"
-    heading-5: "#DED396"
-    heading-6: "#D6CC8F"
     gold: "#e6ae02"
-    quote: "#B7B5AC"
     note: "#c6bf93"
     note-ink: "#2C2C2C"
-    comment: "#8b8a8d"
-    keyword: "#ff6188"
-    string: "#a9dc76"
-    constant: "#ab9df2"
-    datatype: "#78dce8"
-    punctuation: "#939293"
     enjeu: "#d64556"
     reflexivite: "#13c097"
     problematique: "#01a2d6"
@@ -55,18 +36,26 @@ color:
     preciser: "#ff8700"
     non: "#e61301"
   background:
-    dark: page
+    dark: "#21252b"
+    light: "#FFFFFF"
   foreground:
-    dark: ink
+    dark: "#CDCBBC"
+    light: "#34332C"
   primary:
-    dark: accent
+    dark: "#61afef"
+    light: "#1B7EC2"
   secondary:
-    dark: quote
+    dark: "#B7B5AC"
+    light: "#5F5E56"
   success:
-    dark: pertinent
+    dark: "#05ae30"
+    light: "#05ae30"
   info:
-    dark: problematique
+    dark: "#01a2d6"
+    light: "#01a2d6"
   warning:
-    dark: preciser
+    dark: "#ff8700"
+    light: "#ff8700"
   danger:
-    dark: non
+    dark: "#e61301"
+    light: "#e61301"

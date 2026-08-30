@@ -35,8 +35,11 @@ test_that("the pkgdown layer compiles, and carries the -rgb twins pkgdown reads"
   expect_match(css, "--bs-body-color-rgb: 205,203,188", fixed = TRUE)
   expect_match(css, "--bs-link-color-rgb: 97,175,239", fixed = TRUE)
   expect_match(css, "rgba(205,203,188,0.75)", fixed = TRUE)
-  # 30 token classes plus `pre code` for Normal, all scoped so they out-specify pkgdown's theme-dark
-  expect_equal(lengths(regmatches(css, gregexpr('pre code span\\.', css))), 30L)
+  # 30 token classes plus `pre code` for Normal, ONCE PER MODE: the light half unprefixed, the dark
+  # half scoped so it out-specifies pkgdown's own theme-dark block.
+  expect_equal(lengths(regmatches(css, gregexpr('pre code span\\.', css))), 60L)
+  # ... and the light half is there too, unprefixed, so pkgdown's own light page follows the palette
+  expect_match(css, '--bs-body-color: #34332C', fixed = TRUE)
 })
 
 test_that("the pandoc theme is valid JSON with skylighting's own 31 tokens", {

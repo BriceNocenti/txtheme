@@ -1,0 +1,67 @@
+/* PURPOSE: the course typography -- what a heading, a paragraph, a footnote and a code block look
+ *   like. TYPOGRAPHY ONLY: not one colour appears here, so the file is written once and is correct
+ *   in either mode, exactly like inst/prose/annotations.scss beside it.
+ * ROLE: hand-written. _extensions/txtheme/txtheme-prose.scss (named in BOTH theme lists) and
+ *   inst/pkgdown/BS5/assets/txtheme-prose.css are written from it by build_theme().
+ *
+ * SOURCE: ~/github/formations_stat/style.css -- the ~40 live declarations of a 655-line sheet, the
+ * survivors of Appendix B of dev/design.md. What was left behind, and why:
+ *
+ *   - THE HEADING `padding-top` LADDER (h1 10px, h2 150px, h3 40px, h4 20px, h6 12px). It is a
+ *     scroll offset for a fixed header, written as padding -- so it also pushed 150px of blank into
+ *     every printed page and every PDF. Quarto and pkgdown both offset their own anchors, and
+ *     `scroll-margin-top` is the property that means it; neither host needs help.
+ *   - `.column-display` and its `> div` children. Quarto's own `::: {layout-ncol=2}` does this with
+ *     layout attributes and degrades on a phone; keeping an alias for both would be the one thing
+ *     worse than porting the documents.
+ *   - every `.webex-*` rule, `textarea`, and the three answer-button strings. They are
+ *     webexercises' own and moved into its stylesheet, where the strings now key off `:lang()`.
+ *   - `#TOC`, `.tocify`, `.col-md-*`, `.popover*`, `.lightable-classic`, `.xaringanextra-*`:
+ *     gitbook and Bootstrap 3 furniture, or owned by tabxplor's tab_css() since 2.0.0.
+ *   - `!important` on the heading family. It was there to beat a template; a theme layer outranks
+ *     the template by construction.
+ */
+
+/* -- code: wrap NOTHING mid-token ------------------------------------------------------------------
+ * A code block scrolls sideways rather than breaking an identifier in half, which is what pkgdown
+ * and tabxplor already do. `white-space: inherit` on the two `code` elements is the deliberate
+ * other half: INLINE code may wrap, because a name in the middle of a sentence must not push the
+ * paragraph into a horizontal scrollbar.                                                          */
+pre           { word-break: normal; word-wrap: normal; }
+pre code      { white-space: inherit; }
+p code        { white-space: inherit; }
+
+/* -- the paragraph rhythm --------------------------------------------------------------------------
+ * What makes a dense course page readable: paragraphs sit close, and a paragraph inside a list item
+ * does not add a second gap on top of the list's own.                                             */
+p             { margin-top: 0.5rem; margin-bottom: 0.125rem; }
+ul p, ol p    { margin-bottom: 0; }
+
+/* -- the heading voice -----------------------------------------------------------------------------
+ * The family is DejaVu Sans with a real fallback stack: the same first choice tab_css() makes for
+ * table text, so a table and the heading above it agree. h4 down is where the course's own voice
+ * is -- an underline, then two smaller steps, the last italic -- and it is what lets a séance nest
+ * six levels deep without the reader losing the thread.                                           */
+h1, h2, h3, h4, h5, h6 { font-family: "DejaVu Sans", Arial, Helvetica, sans-serif; font-weight: bold; }
+h4            { text-decoration: underline solid; }
+h5            { font-size: 1rem; }
+h6            { font-size: 0.875rem; font-style: italic; }
+
+/* -- the two opt-in prose classes ------------------------------------------------------------------
+ * WARNING: the source said `line-height: 60%`, which is 0.48rem against a 0.8rem font -- two lines
+ * of a footnote overlapped. It read as fine because almost every footnote is one line.            */
+.footnote     { font-size: 80%; line-height: 1.2; padding-left: 6px; padding-bottom: 8px; }
+.compact-list p { margin-top: -4px; margin-bottom: -2px; }
+
+/* -- the exercise title ----------------------------------------------------------------------------
+ * Quarto's own `::: {#exr-id}` emits `<div class="theorem exercise">` with a
+ * `<span class="theorem-title">` -- it KEEPS the class bookdown's `{.exercise}` had, so this is the
+ * courses' original rule with the span named. `--highlight` is the theme's (TX_SLOTS), which is why
+ * a page can now carry this underline without webexercises loaded.
+ * `text-decoration-skip-ink: none` is what makes the rule run under the descenders instead of
+ * breaking around every `p` and `q`.                                                              */
+.exercise .theorem-title {
+  font-size:                 1rem;
+  text-decoration:           underline solid var(--highlight, currentColor) 3px;
+  text-decoration-skip-ink:  none;
+}

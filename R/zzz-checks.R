@@ -21,28 +21,42 @@ SKYLIGHTING_TOKENS <- c(
 
 # Re-derive what a row records, and refuse a cell that no longer matches its own colour. This is the
 # whole discipline: a coordinate is a MEASUREMENT of the hex beside it, never an intention about it.
-.tx_check_colour <- function(name, row) {
-  hex <- row$dark
-  if (!grepl("^#[0-9A-Fa-f]{6}$", hex)) .tx_stop("'", name, "': `dark` is not a #RRGGBB hex: ", hex)
-  if (!tx_empty(row$light) && !grepl("^#[0-9A-Fa-f]{6}$", row$light))
-    .tx_stop("'", name, "': `light` is not a #RRGGBB hex: ", row$light)
+# Run once PER MODE, so the light half is held to the same standard as the dark one -- a light hex
+# with no coordinate beside it would be exactly the drift this check exists to refuse.
+.tx_check_mode <- function(name, row, mode) {
+  hex <- row[[mode]]
+  if (tx_empty(hex)) return(invisible())            # a mode a colour does not declare
+  if (!grepl("^#[0-9A-Fa-f]{6}$", hex))
+    .tx_stop("'", name, "': `", mode, "` is not a #RRGGBB hex: ", hex)
 
+  rec_cell <- row[[paste0(mode, "_oklch")]]
+  if (tx_empty(rec_cell))
+    .tx_stop("'", name, "': `", mode, "` is ", hex, " with no `", mode, "_oklch` beside it")
   got <- hex_oklch(hex)
-  rec <- as.numeric(strsplit(trimws(row$oklch), " +")[[1]])
-  if (length(rec) != 3L) .tx_stop("'", name, "': `oklch` must be three numbers, got '", row$oklch, "'")
+  rec <- as.numeric(strsplit(trimws(rec_cell), " +")[[1]])
+  if (length(rec) != 3L)
+    .tx_stop("'", name, "': `", mode, "_oklch` must be three numbers, got '", rec_cell, "'")
   d <- abs(c(got[1] - rec[1], got[2] - rec[2], ((got[3] - rec[3] + 180) %% 360) - 180))
   if (any(d > c(5e-3, 5e-3, 0.5)))
-    .tx_stop("'", name, "': `oklch` records ", row$oklch, " but ", hex, " is ",
+    .tx_stop("'", name, "': `", mode, "_oklch` records ", rec_cell, " but ", hex, " is ",
              sprintf("%.3f %.3f %.1f", got[1], got[2], got[3]))
 
-  if (tx_empty(row$spec)) return(invisible())
-  s <- strsplit(trimws(row$spec), " +")[[1]]
+  spec <- row[[paste0(mode, "_spec")]]
+  if (tx_empty(spec)) return(invisible())
+  s <- strsplit(trimws(spec), " +")[[1]]
   built <- switch(s[1],
     oklch = oklch_hex(as.numeric(s[2]), as.numeric(s[3]), as.numeric(s[4])),
-    tint  = hex_tint(TX_PALETTE[[s[2]]]$dark, as.numeric(s[3])),
-    .tx_stop("'", name, "': `spec` starts with an unknown verb '", s[1], "' (oklch / tint)"))
+    tint  = hex_tint(TX_PALETTE[[s[2]]][[mode]], as.numeric(s[3])),
+    .tx_stop("'", name, "': `", mode, "_spec` starts with an unknown verb '", s[1],
+             "' (oklch / tint)"))
   if (!identical(toupper(built), toupper(hex)))
-    .tx_stop("'", name, "': `spec` '", row$spec, "' builds ", built, ", not ", hex)
+    .tx_stop("'", name, "': `", mode, "_spec` '", spec, "' builds ", built, ", not ", hex)
+  invisible()
+}
+
+.tx_check_colour <- function(name, row) {
+  if (tx_empty(row$dark)) .tx_stop("'", name, "': every colour declares a `dark` hex")
+  for (m in TX_MODES) .tx_check_mode(name, row, m)
   invisible()
 }
 
@@ -60,8 +74,9 @@ tx_check_grids <- function() {
   if (anyDuplicated(names(TX_SLOTS))) .tx_stop("TX_SLOTS has a duplicated `slot`")
   for (nm in names(TX_SLOTS)) {
     r <- TX_SLOTS[[nm]]
-    if (!r$colour %in% names(TX_PALETTE))
-      .tx_stop("slot '", nm, "': `colour` = '", r$colour, "' is in no TX_PALETTE row")
+    for (k in c("colour", paste0("colour_", TX_MODES)))
+      if (!tx_empty(r[[k]]) && !r[[k]] %in% names(TX_PALETTE))
+        .tx_stop("slot '", nm, "': `", k, "` = '", r[[k]], "' is in no TX_PALETTE row")
     if (!r$emit %in% c("chrome", "heading", "prose", "annotation"))
       .tx_stop("slot '", nm, "': `emit` = '", r$emit, "' is not a generator stage")
     if (!tx_empty(r$ground) && !r$ground %in% names(TX_PALETTE))

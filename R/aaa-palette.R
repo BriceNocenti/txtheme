@@ -15,77 +15,98 @@
 #     does not have.
 # See: dev/design.md for the palette's rationale, R/build-theme.R for what is written from it.
 
+# The modes a colour can declare, in the order a consumer meets them: `dark` is the half the palette
+# was designed in, `light` the half derived from it. Everything downstream takes one of these as an
+# ARGUMENT -- tx_hex(), every emitter, the contrast report, the per-mode check.
+TX_MODES <- c("dark", "light")
+
 # === SECTION: the colours =========================================================================
-# name    the key everything else refers to
-# dark    the hex on a dark page -- the only mode decided so far
-# light   the hex on a light page. NA everywhere today: the light half is pkgdown's and Quarto's own,
-#         and the emitters already write an unprefixed rule for any row that fills this in.
-# spec    how the hex is DERIVED, where it is: "oklch <L> <C> <H>", or "tint <colour> <amount>".
-#         Checked at load -- a hex that no longer matches its own construction is a silent drift.
-# oklch   what the hex IS: L C H, read back. Checked at load to 5e-3 / 5e-3 / 0.5 deg.
-# source  where the value comes from.
-# why     filled ONLY where the value departs from its source, or where the departure is the point.
+# name          the key everything else refers to
+# dark          the hex on a dark page
+# dark_spec     how that hex is DERIVED, where it is: "oklch <L> <C> <H>", or "tint <colour> <amount>".
+#               Checked at load -- a hex that no longer matches its own construction is a silent drift.
+# dark_oklch    what that hex IS: L C H, read back. Checked at load to 5e-3 / 5e-3 / 0.5 deg.
+# light         the hex on a light page, and the same two columns after it. NA where the colour is
+#               MODE-INDEPENDENT: the ten annotation hues and the note are one value in both modes by
+#               construction (see the annotation block below), so a light cell there would be a
+#               second name for the same colour.
+# source        where the value comes from.
+# why           filled ONLY where the value departs from its source, or where the departure is the point.
+#
+# The two halves are symmetric on purpose: a mode is an ARGUMENT everywhere downstream (tx_hex(),
+# every emitter, the contrast report), never a second writer. Adding a third mode would be a third
+# triple here and nothing else.
 TX_PALETTE <- tx_grid(tx_tribble(
-  ~name,            ~dark,      ~light, ~spec,                  ~oklch,              ~source,                                           ~why,
+  ~name          , ~dark    , ~dark_spec            , ~dark_oklch        , ~light   , ~light_spec              , ~light_oklch       , ~source                                                                                 , ~why,
 
   # --- chrome ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  "page",           "#21252b",  NA,     NA,                     "0.263 0.013 258.4", "Atom One Dark's ground -- what the editor shows",  NA,
-  "panel",          "#282c34",  NA,     NA,                     "0.293 0.016 264.3", "Atom One Dark's raised surface",                  NA,
-  "ink",            "#CDCBBC",  NA,     NA,                     "0.840 0.020 100.7", "the maintainer's settings.json override",          "the theme's own #fcfcfa is a near-white, which makes the text louder than the colours it sits among",
-  "emphasis",       "#fcfcfa",  NA,     NA,                     "0.991 0.003 107.2", "starless-monokai's own foreground",                "demoted from body text to emphasis by the row above",
-  "border",         "#3e4451",  NA,     NA,                     "0.386 0.024 265.7", "Atom One Dark",                                   NA,
-  "accent",         "#61afef",  NA,     NA,                     "0.730 0.121 245.3", "Atom One Dark's blue -- also the Function token",  "named `accent`, not `link`: Quarto silently promotes a `color.palette` entry whose NAME is a brand role (`link`, `primary`, `danger`, ...) to that role, in BOTH modes. Verified on 1.10.18 -- a palette key `link` put this blue on the light page at Lc 30. .onLoad() now refuses any such name",
-  "accent-hover",   "#81bff2",  NA,     "tint accent 0.2",      "0.782 0.097 244.3", "bootstrap's own dark-mode $link-shade-percentage", NA,
-  "code-page",      "#1f1f1f",  NA,     NA,                     "0.239 0.000 263.3", "VS Code's dark ground",                           "a starless theme sets no editor background, so the code block's ground is NAMED rather than inherited",
-  "inline-code",    "#fc9867",  NA,     NA,                     "0.774 0.136  46.2", "starless-monokai's markup.inline.raw",             NA,
+  "page"         , "#21252b", NA                    , "0.263 0.013 258.4", "#FFFFFF", NA                       , "1.000 0.000 263.3", "Atom One Dark's ground -- what the editor shows"                                       , NA,
+  "panel"        , "#282c34", NA                    , "0.293 0.016 264.3", "#F8F8F5", "oklch 0.978 0.004 100"  , "0.978 0.004 107.0", "Atom One Dark's raised surface"                                                        , NA,
+  "ink"          , "#CDCBBC", NA                    , "0.840 0.020 100.7", "#34332C", "oklch 0.320 0.012 100"  , "0.320 0.012 100.4", "the maintainer's settings.json override"                                               , "the theme's own #fcfcfa is a near-white, which makes the text louder than the colours it sits among",
+  "emphasis"     , "#fcfcfa", NA                    , "0.991 0.003 107.2", "#000000", NA                       , "0.000 0.000   0.0", "starless-monokai's own foreground; bootstrap's own --bs-emphasis-color on a light page", "demoted from body text to emphasis by the row above. Black on the light side is a DECISION, not a mirror: bold is loud enough on white without a hue, so the light half spends nothing on it (see the `bold` slot); on a dark page bold reads weakly, which is why the gold is added there",
+  "border"       , "#3e4451", NA                    , "0.386 0.024 265.7", "#DAD9D3", "oklch 0.885 0.008 100"  , "0.884 0.008  99.0", "Atom One Dark"                                                                         , NA,
+  "accent"       , "#61afef", NA                    , "0.730 0.121 245.3", "#1B7EC2", "oklch 0.573 0.135 245.2", "0.573 0.135 245.2", "Atom One Dark's blue -- also the Function token"                                       , "named `accent`, not `link`: Quarto silently promotes a `color.palette` entry whose NAME is a brand role (`link`, `primary`, `danger`, ...) to that role, in BOTH modes. Verified on 1.10.18 -- a palette key `link` put this blue on the light page at Lc 30. .onLoad() now refuses any such name",
+  "accent-hover" , "#81bff2", "tint accent 0.2"     , "0.782 0.097 244.3", "#0069A7", "oklch 0.503 0.127 245.1", "0.503 0.127 245.1", "bootstrap's own dark-mode $link-shade-percentage"                                      , NA,
+  "code-page"    , "#1f1f1f", NA                    , "0.239 0.000 263.3", "#F4F4EF", "oklch 0.965 0.006 100"  , "0.966 0.007 106.8", "VS Code's dark ground"                                                                 , "a starless theme sets no editor background, so the code block's ground is NAMED rather than inherited",
+  "inline-code"  , "#fc9867", NA                    , "0.774 0.136  46.2", "#A54A14", "oklch 0.519 0.135 46.3" , "0.519 0.135  46.1", "starless-monokai's markup.inline.raw"                                                  , NA,
 
-  # --- the heading ladder: warm-95-10 ---------------------------------------------------------------------------------------------------------------------------------------------
+  # --- the heading ladder: warm-95-10 on a dark page, warm-24-32 on a light one ---------------------------------------------------------------------------------------------------------------------------------------------
   # One hue, the body ink's own (~100), lifted and given chroma back -- so a heading is LITERALLY the text colour, brighter. h6 is FLOORED on the ink at L 0.840 and nothing
   # goes below: the search that produced this family started because a heading was DARKER than the prose it led, and the floor is what stops that returning. A rung of
   # lightness buys ~0.02 of chroma at this hue (the sRGB ceiling is 0.086 at L 0.96, 0.107 at 0.95, 0.128 at 0.94), so the top rung asks for exactly what it can hold: one
   # rung higher and the ladder's first step would have been silently clipped away.
-  "heading-1",      "#FEF1A1",  NA,     "oklch 0.950 0.10 100", "0.951 0.101 100.1", "warm-95-10",                                      NA,
-  "heading-2",      "#F5E9A3",  NA,     "oklch 0.928 0.09 100", "0.928 0.090  99.6", "warm-95-10",                                      NA,
-  "heading-3",      "#ECE2A4",  NA,     "oklch 0.906 0.08 100", "0.906 0.080 100.1", "warm-95-10",                                      NA,
-  "heading-4",      "#E5DB9D",  NA,     "oklch 0.884 0.08 100", "0.885 0.081 100.1", "warm-95-10",                                      NA,
-  "heading-5",      "#DED396",  NA,     "oklch 0.862 0.08 100", "0.861 0.080  99.2", "warm-95-10",                                      NA,
-  "heading-6",      "#D6CC8F",  NA,     "oklch 0.840 0.08 100", "0.839 0.080 100.0", "warm-95-10, floored on the ink",                  NA,
+  # THE LIGHT HALF IS THE MIRROR, and a shallow one: h1 at L 0.240 down to h6 at 0.320, CEILINGED on
+  # the ink instead of floored on it, so a heading is again the text colour with one step more
+  # presence. It is nearly monochrome and that is the point -- at this lightness the warm hue holds
+  # 0.05 of chroma at most, and a light course page is read as bookdown and pkgdown set one: the
+  # size carries the hierarchy, the warmth only says whose page it is.
+  "heading-1"    , "#FEF1A1", "oklch 0.950 0.10 100", "0.951 0.101 100.1", "#242003", "oklch 0.240 0.045 100"  , "0.241 0.046 101.8", "warm-95-10"                                                                            , NA,
+  "heading-2"    , "#F5E9A3", "oklch 0.928 0.09 100", "0.928 0.090  99.6", "#282309", "oklch 0.256 0.042 100"  , "0.255 0.041  98.5", "warm-95-10"                                                                            , NA,
+  "heading-3"    , "#ECE2A4", "oklch 0.906 0.08 100", "0.906 0.080 100.1", "#2B270F", "oklch 0.272 0.039 100"  , "0.271 0.039 100.0", "warm-95-10"                                                                            , NA,
+  "heading-4"    , "#E5DB9D", "oklch 0.884 0.08 100", "0.885 0.081 100.1", "#2F2B16", "oklch 0.288 0.036 100"  , "0.287 0.035  98.8", "warm-95-10"                                                                            , NA,
+  "heading-5"    , "#DED396", "oklch 0.862 0.08 100", "0.861 0.080  99.2", "#332F1C", "oklch 0.304 0.033 100"  , "0.304 0.032  97.8", "warm-95-10"                                                                            , NA,
+  "heading-6"    , "#D6CC8F", "oklch 0.840 0.08 100", "0.839 0.080 100.0", "#363321", "oklch 0.320 0.030 100"  , "0.319 0.030  99.9", "warm-95-10, floored on the ink"                                                        , NA,
 
   # --- prose ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  "gold",           "#e6ae02",  NA,     NA,                     "0.781 0.160  85.2", "the maintainer's settings.json",                  "markdown bold should read as emphasis, not as more text; the blockquote's rule ties to it",
-  "quote",          "#B7B5AC",  NA,     NA,                     "0.772 0.013  96.5", "the maintainer's settings.json",                  "a quote recedes: the ink's own hue, a step down in lightness",
-  "note",           "#c6bf93",  NA,     NA,                     "0.799 0.059 100.1", "the page's own warm hue at C 0.06",               "the one annotation that keeps a fill: it must read as a few lines of light mode inside a dark one, not as a highlighter pen",
-  "note-ink",       "#2C2C2C",  NA,     NA,                     "0.293 0.000 263.3", "the note's own text colour",                      NA,
+  "gold"         , "#e6ae02", NA                    , "0.781 0.160  85.2", NA       , NA                       , NA                 , "the maintainer's settings.json"                                                        , "MODE-INDEPENDENT on purpose. A yellow darkened for a light page goes muddy, and this one has been read on white: it stays as it is for the `resultat` annotation and the blockquote rule. Only BOLD changes side (see the `bold` slot)",
+  "quote"        , "#B7B5AC", NA                    , "0.772 0.013  96.5", "#5F5E56", "oklch 0.480 0.012 96.5" , "0.480 0.013 101.1", "the maintainer's settings.json"                                                        , "a quote recedes: the ink's own hue, a step down in lightness",
+  "note"         , "#c6bf93", NA                    , "0.799 0.059 100.1", NA       , NA                       , NA                 , "the page's own warm hue at C 0.06"                                                     , "the one annotation that keeps a fill: it must read as a few lines of light mode inside a dark one, not as a highlighter pen",
+  "note-ink"     , "#2C2C2C", NA                    , "0.293 0.000 263.3", NA       , NA                       , NA                 , "the note's own text colour"                                                            , NA,
 
   # --- the code theme's remaining colours -----------------------------------------------------------------------------------------------------------------------------------------
   # Every other token reuses a colour already above: `ink` (Normal, Variable), `accent` (Function and friends), `inline-code` (Attribute, Information).
-  "comment",        "#8b8a8d",  NA,     NA,                     "0.635 0.005 301.0", "starless-monokai's #727072, lifted",              "measured on the three dark grounds a page can show, #727072 gives Lc 3.4 / 3.1 / 2.9 -- under WCAG AA everywhere, and a page is read smaller than an editor. #8b8a8d gives 4.8 / 4.5 / 4.1. It lands close to the punctuation grey, and that is fine: comments stay ITALIC, so the style carries the distinction the luminance no longer can",
-  "keyword",        "#ff6188",  NA,     NA,                     "0.706 0.194   8.4", "starless-monokai",                                NA,
-  "string",         "#a9dc76",  NA,     NA,                     "0.836 0.142 130.7", "starless-monokai",                                NA,
-  "constant",       "#ab9df2",  NA,     NA,                     "0.741 0.122 290.7", "starless-monokai",                                NA,
-  "datatype",       "#78dce8",  NA,     NA,                     "0.838 0.095 205.7", "starless-monokai",                                NA,
-  "punctuation",    "#939293",  NA,     NA,                     "0.661 0.002 324.1", "starless-monokai's punctuation grey",             NA,
+  "comment"      , "#8b8a8d", NA                    , "0.635 0.005 301.0", "#7B797E", "oklch 0.579 0.008 303.9", "0.579 0.008 303.9", "starless-monokai's #727072, lifted"                                                    , "measured on the three dark grounds a page can show, #727072 gives Lc 3.4 / 3.1 / 2.9 -- under WCAG AA everywhere, and a page is read smaller than an editor. #8b8a8d gives 4.8 / 4.5 / 4.1. It lands close to the punctuation grey, and that is fine: comments stay ITALIC, so the style carries the distinction the luminance no longer can",
+  "keyword"      , "#ff6188", NA                    , "0.706 0.194   8.4", "#891B3D", "oklch 0.420 0.145 8.4"  , "0.420 0.145   8.4", "starless-monokai"                                                                      , NA,
+  "string"       , "#a9dc76", NA                    , "0.836 0.142 130.7", "#517C16", "oklch 0.535 0.135 130.7", "0.535 0.135 130.7", "starless-monokai"                                                                      , NA,
+  "constant"     , "#ab9df2", NA                    , "0.741 0.122 290.7", "#503894", "oklch 0.420 0.144 290.9", "0.420 0.144 290.9", "starless-monokai"                                                                      , NA,
+  "datatype"     , "#78dce8", NA                    , "0.838 0.095 205.7", "#2AB9C7", "oklch 0.721 0.115 205.2", "0.721 0.115 205.2", "starless-monokai"                                                                      , NA,
+  "punctuation"  , "#939293", NA                    , "0.661 0.002 324.1", "#6A686A", "oklch 0.520 0.004 325.1", "0.520 0.004 325.1", "starless-monokai's punctuation grey"                                                   , NA,
 
   # --- the pandoc-span annotation classes -----------------------------------------------------------------------------------------------------------------------------------------
   # MODE-INDEPENDENT BY CONSTRUCTION, which is why the annotations stylesheet needs no light/dark cascade at all: every one sits at medium OKLCH lightness (0.585-0.799)
   # with chroma at most 0.234, chosen to clear both #FFFFFF and a dark ground. `resultat` is the prose gold and `comment-bg` the note, so neither is a row here: one
   # colour, painted twice by TX_SLOTS.
-  "enjeu",          "#d64556",  NA,     NA,                     "0.600 0.180  17.8", "the maintainer's Zettlr palette",                 NA,
-  "reflexivite",    "#13c097",  NA,     NA,                     "0.720 0.140 170.0", "the maintainer's Zettlr palette",                 NA,
-  "problematique",  "#01a2d6",  NA,     NA,                     "0.667 0.133 230.2", "the maintainer's Zettlr palette",                 NA,
-  "structure",      "#83adbb",  NA,     NA,                     "0.722 0.050 220.4", "the maintainer's Zettlr palette",                 NA,
-  "reference",      "#488bfa",  NA,     NA,                     "0.649 0.179 260.0", "the maintainer's Zettlr palette",                 NA,
-  "concept",        "#b87bf5",  NA,     NA,                     "0.696 0.180 305.3", "the maintainer's Zettlr palette",                 NA,
-  "terrain",        "#d8714c",  NA,     NA,                     "0.660 0.139  40.1", "the maintainer's Zettlr palette",                 NA,
-  "pertinent",      "#05ae30",  NA,     NA,                     "0.653 0.204 145.0", "the maintainer's Zettlr palette",                 NA,
-  "preciser",       "#ff8700",  NA,     NA,                     "0.743 0.182  56.0", "the maintainer's Zettlr palette",                 NA,
-  "non",            "#e61301",  NA,     NA,                     "0.585 0.234  30.0", "the maintainer's Zettlr palette",                 NA
+  "enjeu"        , "#d64556", NA                    , "0.600 0.180  17.8", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "reflexivite"  , "#13c097", NA                    , "0.720 0.140 170.0", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "problematique", "#01a2d6", NA                    , "0.667 0.133 230.2", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "structure"    , "#83adbb", NA                    , "0.722 0.050 220.4", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "reference"    , "#488bfa", NA                    , "0.649 0.179 260.0", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "concept"      , "#b87bf5", NA                    , "0.696 0.180 305.3", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "terrain"      , "#d8714c", NA                    , "0.660 0.139  40.1", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "pertinent"    , "#05ae30", NA                    , "0.653 0.204 145.0", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "preciser"     , "#ff8700", NA                    , "0.743 0.182  56.0", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA,
+  "non"          , "#e61301", NA                    , "0.585 0.234  30.0", NA       , NA                       , NA                 , "the maintainer's Zettlr palette"                                                       , NA
 ))
 
 
 # === SECTION: where each colour is painted ========================================================
-# slot      the key, unique
-# colour    a foreign key into TX_PALETTE
+# slot          the key, unique
+# colour        a foreign key into TX_PALETTE -- the colour this slot is painted with
+# colour_light  a DIFFERENT foreign key for the light page, where the slot is not the same decision
+#               in both modes. NA everywhere but `bold`, and that one row is the whole reason the
+#               column exists: on white, bold is loud enough as bold, so it stays the emphasis
+#               black; on a dark page bold reads weakly, so it takes the gold. A colour that merely
+#               has two VALUES needs nothing here -- that is TX_PALETTE's `light` column.
 # emit      which generator stage owns the row: chrome / heading / prose / annotation. Replaces a switch().
 # ground    the colour this one is READ ON, for the contrast report build_theme() prints. NA where the slot is itself a ground, a border or a rule.
 # bs_var    a bootstrap 5.3 colour-mode custom property -- how pkgdown gets the chrome. Checked at load against the 52 bootstrap emits.
@@ -105,50 +126,51 @@ TX_PALETTE <- tx_grid(tx_tribble(
 #   var(--bs-link-opacity,1)) }` reads ONLY the twin, so the hex alone does nothing at all.
 # WARNING: exactly ONE of bs_var / css_var / selector is filled per row -- R/zzz-checks.R refuses anything else.
 TX_SLOTS <- tx_grid(tx_tribble(
-  ~slot,              ~colour,        ~emit,        ~ground, ~bs_var,                 ~bs_rgb,                     ~sass_var,              ~css_var,          ~selector,          ~prop,               ~alpha, ~style,                                 ~why,
+  ~slot             , ~colour        , ~colour_light, ~emit       , ~ground, ~bs_var                , ~bs_rgb                    , ~sass_var             , ~css_var         , ~selector         , ~prop              , ~alpha, ~style                                , ~why,
 
   # --- the chrome ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  "page-bg",          "page",         "chrome",     NA,      "--bs-body-bg",          "--bs-body-bg-rgb",          "$body-bg",             NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "ink",              "ink",          "chrome",     "page",  "--bs-body-color",       "--bs-body-color-rgb",       "$body-color",          NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "ink-secondary",    "ink",          "chrome",     "page",  "--bs-secondary-color",  NA,                          NA,                     NA,                NA,                 NA,                  0.75,   NA,                                     "bootstrap would compute this from its own stock grey; stated so the sidebar and footer follow the ink. Quarto needs no row of its own: it derives it from $body-color",
-  "ink-tertiary",     "ink",          "chrome",     "page",  "--bs-tertiary-color",   NA,                          NA,                     NA,                NA,                 NA,                  0.5,    NA,                                     NA,
-  "emphasis",         "emphasis",     "chrome",     "page",  "--bs-emphasis-color",   "--bs-emphasis-color-rgb",   "$body-emphasis-color", NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "heading-fallback", "heading-1",    "chrome",     "page",  "--bs-heading-color",    NA,                          "$headings-color",      NA,                NA,                 NA,                  NA,     NA,                                     "bslib has ONE headings variable, so the ladder below cannot be one: this is only what its six rules do not reach",
-  "panel-bg",         "panel",        "chrome",     NA,      "--bs-tertiary-bg",      NA,                          "$body-tertiary-bg",    NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "border",           "border",       "chrome",     NA,      "--bs-border-color",     NA,                          "$border-color",        NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "link",             "accent",       "chrome",     "page",  "--bs-link-color",       "--bs-link-color-rgb",       "$link-color",          NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "link-hover",       "accent-hover", "chrome",     "page",  "--bs-link-hover-color", "--bs-link-hover-color-rgb", "$link-hover-color",    NA,                NA,                 NA,                  NA,     NA,                                     NA,
-  "inline-code-ink",  "inline-code",  "chrome",     "page",  "--bs-code-color",       NA,                          "$code-color",          NA,                NA,                 NA,                  NA,     NA,                                     NA,
+  "page-bg"         , "page"         , NA           , "chrome"    , NA     , "--bs-body-bg"         , "--bs-body-bg-rgb"         , "$body-bg"            , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "ink"             , "ink"          , NA           , "chrome"    , "page" , "--bs-body-color"      , "--bs-body-color-rgb"      , "$body-color"         , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "ink-secondary"   , "ink"          , NA           , "chrome"    , "page" , "--bs-secondary-color" , NA                         , NA                    , NA               , NA                , NA                 , 0.75  , NA                                    , "bootstrap would compute this from its own stock grey; stated so the sidebar and footer follow the ink. Quarto needs no row of its own: it derives it from $body-color",
+  "ink-tertiary"    , "ink"          , NA           , "chrome"    , "page" , "--bs-tertiary-color"  , NA                         , NA                    , NA               , NA                , NA                 , 0.5   , NA                                    , NA,
+  "emphasis"        , "emphasis"     , NA           , "chrome"    , "page" , "--bs-emphasis-color"  , "--bs-emphasis-color-rgb"  , "$body-emphasis-color", NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "heading-fallback", "heading-1"    , NA           , "chrome"    , "page" , "--bs-heading-color"   , NA                         , "$headings-color"     , NA               , NA                , NA                 , NA    , NA                                    , "bslib has ONE headings variable, so the ladder below cannot be one: this is only what its six rules do not reach",
+  "panel-bg"        , "panel"        , NA           , "chrome"    , NA     , "--bs-tertiary-bg"     , NA                         , "$body-tertiary-bg"   , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "border"          , "border"       , NA           , "chrome"    , NA     , "--bs-border-color"    , NA                         , "$border-color"       , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "link"            , "accent"       , NA           , "chrome"    , "page" , "--bs-link-color"      , "--bs-link-color-rgb"      , "$link-color"         , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "link-hover"      , "accent-hover" , NA           , "chrome"    , "page" , "--bs-link-hover-color", "--bs-link-hover-color-rgb", "$link-hover-color"   , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "inline-code-ink" , "inline-code"  , NA           , "chrome"    , "page" , "--bs-code-color"      , NA                         , "$code-color"         , NA               , NA                , NA                 , NA    , NA                                    , NA,
+  "highlight"       , "accent"       , NA           , "chrome"    , NA     , NA                     , NA                         , NA                    , "--highlight"    , NA                , NA                 , NA    , NA                                    , "webexercises reads --highlight for its check button and the courses for their own `.exercise` rule, and it is DECLARED IN webex.css -- so a themed page WITHOUT webexercises lost that colour silently, falling back to currentColor. The theme owes it, from the same colour the brand calls `primary`",
 
   # --- the heading ladder -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  "h1",               "heading-1",    "heading",    "page",  NA,                      NA,                          NA,                     NA,                "h1",               "color",             NA,     NA,                                     NA,
-  "h2",               "heading-2",    "heading",    "page",  NA,                      NA,                          NA,                     NA,                "h2",               "color",             NA,     NA,                                     NA,
-  "h3",               "heading-3",    "heading",    "page",  NA,                      NA,                          NA,                     NA,                "h3",               "color",             NA,     NA,                                     NA,
-  "h4",               "heading-4",    "heading",    "page",  NA,                      NA,                          NA,                     NA,                "h4",               "color",             NA,     NA,                                     NA,
-  "h5",               "heading-5",    "heading",    "page",  NA,                      NA,                          NA,                     NA,                "h5",               "color",             NA,     NA,                                     NA,
-  "h6",               "heading-6",    "heading",    "page",  NA,                      NA,                          NA,                     NA,                "h6",               "color",             NA,     NA,                                     NA,
+  "h1"              , "heading-1"    , NA           , "heading"   , "page" , NA                     , NA                         , NA                    , NA               , "h1"              , "color"            , NA    , NA                                    , NA,
+  "h2"              , "heading-2"    , NA           , "heading"   , "page" , NA                     , NA                         , NA                    , NA               , "h2"              , "color"            , NA    , NA                                    , NA,
+  "h3"              , "heading-3"    , NA           , "heading"   , "page" , NA                     , NA                         , NA                    , NA               , "h3"              , "color"            , NA    , NA                                    , NA,
+  "h4"              , "heading-4"    , NA           , "heading"   , "page" , NA                     , NA                         , NA                    , NA               , "h4"              , "color"            , NA    , NA                                    , NA,
+  "h5"              , "heading-5"    , NA           , "heading"   , "page" , NA                     , NA                         , NA                    , NA               , "h5"              , "color"            , NA    , NA                                    , NA,
+  "h6"              , "heading-6"    , NA           , "heading"   , "page" , NA                     , NA                         , NA                    , NA               , "h6"              , "color"            , NA    , NA                                    , NA,
 
   # --- prose: what the editor theme colours in markdown, and bootstrap has no variable for --------------------------------------------------------------------------------------------------------------------------------------------
-  "bold",             "gold",         "prose",      "page",  NA,                      NA,                          NA,                     NA,                "strong, b",        "color",             NA,     NA,                                     NA,
-  "quote-rule",       "gold",         "prose",      NA,      NA,                      NA,                          NA,                     NA,                "blockquote",       "border-left-color", NA,     NA,                                     NA,
-  "quote-text",       "quote",        "prose",      "page",  NA,                      NA,                          NA,                     NA,                "blockquote",       "color",             NA,     "font-style: italic",                   NA,
-  "inline-code-pill", "inline-code",  "prose",      NA,      NA,                      NA,                          NA,                     NA,                ":not(pre) > code", "background-color",  0.2,    "padding: 3px 5px; border-radius: 5px", "the same orange as the ink on it, at a fifth: a fill on a dark page reads as a TINT OF THE PAGE, not as a colour of its own",
-  "code-ground",      "code-page",    "prose",      NA,      NA,                      NA,                          NA,                     NA,                "pre",              "background-color",  NA,     NA,                                     NA,
+  "bold"            , "gold"         , "emphasis"   , "prose"     , "page" , NA                     , NA                         , NA                    , NA               , "strong, b"       , "color"            , NA    , NA                                    , NA,
+  "quote-rule"      , "gold"         , NA           , "prose"     , NA     , NA                     , NA                         , NA                    , NA               , "blockquote"      , "border-left-color", NA    , NA                                    , NA,
+  "quote-text"      , "quote"        , NA           , "prose"     , "page" , NA                     , NA                         , NA                    , NA               , "blockquote"      , "color"            , NA    , "font-style: italic"                  , NA,
+  "inline-code-pill", "inline-code"  , NA           , "prose"     , NA     , NA                     , NA                         , NA                    , NA               , ":not(pre) > code", "background-color" , 0.2   , "padding: 3px 5px; border-radius: 5px", "the same orange as the ink on it, at a fifth: a fill on a dark page reads as a TINT OF THE PAGE, not as a colour of its own",
+  "code-ground"     , "code-page"    , NA           , "prose"     , NA     , NA                     , NA                         , NA                    , NA               , "pre"             , "background-color" , NA    , NA                                    , NA,
 
   # --- the annotation classes: the custom properties inst/prose/annotations.scss reads -------------------------------------------------------------------------------------------------------------------------------------------------
-  "an-enjeu",         "enjeu",        "annotation", "page",  NA,                      NA,                          NA,                     "--enjeu",         NA,                 NA,                  NA,     NA,                                     NA,
-  "an-resultat",      "gold",         "annotation", "page",  NA,                      NA,                          NA,                     "--resultat",      NA,                 NA,                  NA,     NA,                                     "the prose gold again: a result IS the emphasis, so it is one colour painted twice, not two colours that happen to agree",
-  "an-reflexivite",   "reflexivite",  "annotation", "page",  NA,                      NA,                          NA,                     "--reflexivite",   NA,                 NA,                  NA,     NA,                                     NA,
-  "an-problematique", "problematique","annotation", "page",  NA,                      NA,                          NA,                     "--problematique", NA,                 NA,                  NA,     NA,                                     NA,
-  "an-structure",     "structure",    "annotation", "page",  NA,                      NA,                          NA,                     "--structure",     NA,                 NA,                  NA,     NA,                                     NA,
-  "an-reference",     "reference",    "annotation", "page",  NA,                      NA,                          NA,                     "--reference",     NA,                 NA,                  NA,     NA,                                     NA,
-  "an-concept",       "concept",      "annotation", "page",  NA,                      NA,                          NA,                     "--concept",       NA,                 NA,                  NA,     NA,                                     NA,
-  "an-terrain",       "terrain",      "annotation", "page",  NA,                      NA,                          NA,                     "--terrain",       NA,                 NA,                  NA,     NA,                                     NA,
-  "an-pertinent",     "pertinent",    "annotation", "page",  NA,                      NA,                          NA,                     "--pertinent",     NA,                 NA,                  NA,     NA,                                     NA,
-  "an-preciser",      "preciser",     "annotation", "page",  NA,                      NA,                          NA,                     "--preciser",      NA,                 NA,                  NA,     NA,                                     NA,
-  "an-non",           "non",          "annotation", "page",  NA,                      NA,                          NA,                     "--non",           NA,                 NA,                  NA,     NA,                                     NA,
-  "an-comment-bg",    "note",         "annotation", NA,      NA,                      NA,                          NA,                     "--comment-bg",    NA,                 NA,                  NA,     NA,                                     NA,
-  "an-comment-text",  "note-ink",     "annotation", "note",  NA,                      NA,                          NA,                     "--comment-text",  NA,                 NA,                  NA,     NA,                                     NA
+  "an-enjeu"        , "enjeu"        , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--enjeu"        , NA                , NA                 , NA    , NA                                    , NA,
+  "an-resultat"     , "gold"         , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--resultat"     , NA                , NA                 , NA    , NA                                    , "the prose gold again: a result IS the emphasis, so it is one colour painted twice, not two colours that happen to agree",
+  "an-reflexivite"  , "reflexivite"  , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--reflexivite"  , NA                , NA                 , NA    , NA                                    , NA,
+  "an-problematique", "problematique", NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--problematique", NA                , NA                 , NA    , NA                                    , NA,
+  "an-structure"    , "structure"    , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--structure"    , NA                , NA                 , NA    , NA                                    , NA,
+  "an-reference"    , "reference"    , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--reference"    , NA                , NA                 , NA    , NA                                    , NA,
+  "an-concept"      , "concept"      , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--concept"      , NA                , NA                 , NA    , NA                                    , NA,
+  "an-terrain"      , "terrain"      , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--terrain"      , NA                , NA                 , NA    , NA                                    , NA,
+  "an-pertinent"    , "pertinent"    , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--pertinent"    , NA                , NA                 , NA    , NA                                    , NA,
+  "an-preciser"     , "preciser"     , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--preciser"     , NA                , NA                 , NA    , NA                                    , NA,
+  "an-non"          , "non"          , NA           , "annotation", "page" , NA                     , NA                         , NA                    , "--non"          , NA                , NA                 , NA    , NA                                    , NA,
+  "an-comment-bg"   , "note"         , NA           , "annotation", NA     , NA                     , NA                         , NA                    , "--comment-bg"   , NA                , NA                 , NA    , NA                                    , NA,
+  "an-comment-text" , "note-ink"     , NA           , "annotation", "note" , NA                     , NA                         , NA                    , "--comment-text" , NA                , NA                 , NA    , NA                                    , NA
 ))
 
 

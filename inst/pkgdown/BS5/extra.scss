@@ -11,8 +11,72 @@
 //   block AFTER this file, so source order cannot win; only the extra element out-specifies it
 //   (0,2,4 against 0,2,3).
 
+:root {
+  color-scheme: light;
+  --bs-body-bg: #FFFFFF;
+  --bs-body-bg-rgb: 255,255,255;
+  --bs-body-color: #34332C;
+  --bs-body-color-rgb: 52,51,44;
+  --bs-secondary-color: rgba(52,51,44,0.75);
+  --bs-tertiary-color: rgba(52,51,44,0.5);
+  --bs-emphasis-color: #000000;
+  --bs-emphasis-color-rgb: 0,0,0;
+  --bs-heading-color: #242003;
+  --bs-tertiary-bg: #F8F8F5;
+  --bs-border-color: #DAD9D3;
+  --bs-link-color: #1B7EC2;
+  --bs-link-color-rgb: 27,126,194;
+  --bs-link-hover-color: #0069A7;
+  --bs-link-hover-color-rgb: 0,105,167;
+  --bs-code-color: #A54A14;
+  --highlight: #1B7EC2;
+}
+
+h1 { color: #242003; }
+h2 { color: #282309; }
+h3 { color: #2B270F; }
+h4 { color: #2F2B16; }
+h5 { color: #332F1C; }
+h6 { color: #363321; }
+strong, b { color: #000000; }
+blockquote { border-left-color: #e6ae02; color: #5F5E56; font-style: italic; }
+:not(pre) > code { background-color: rgba(165,74,20,0.2); padding: 3px 5px; border-radius: 5px; }
+pre { background-color: #F4F4EF; }
+pre code { color: #34332C; }
+pre code span.al { color: #891B3D; font-weight: bold; }
+pre code span.an { color: #7B797E; }
+pre code span.at { color: #A54A14; font-style: italic; }
+pre code span.bn { color: #503894; }
+pre code span.bu { color: #1B7EC2; }
+pre code span.cf { color: #891B3D; }
+pre code span.ch { color: #517C16; }
+pre code span.cn { color: #503894; }
+pre code span.co { color: #7B797E; font-style: italic; }
+pre code span.cv { color: #7B797E; }
+pre code span.do { color: #7B797E; }
+pre code span.dt { color: #2AB9C7; font-style: italic; }
+pre code span.dv { color: #503894; }
+pre code span.er { color: #891B3D; text-decoration: underline; }
+pre code span.ex { color: #1B7EC2; }
+pre code span.fl { color: #503894; }
+pre code span.fu { color: #1B7EC2; }
+pre code span.im { color: #891B3D; }
+pre code span.in { color: #A54A14; }
+pre code span.kw { color: #891B3D; }
+pre code span.op { color: #6A686A; }
+pre code span.ot { color: #1B7EC2; }
+pre code span.pp { color: #891B3D; }
+pre code span.re { color: #7B797E; }
+pre code span.sc { color: #503894; }
+pre code span.ss { color: #517C16; }
+pre code span.st { color: #517C16; }
+pre code span.va { color: #34332C; }
+pre code span.vs { color: #517C16; }
+pre code span.wa { color: #891B3D; }
+
 html[data-bs-theme="dark"] {
   // the chrome -- bootstrap 5.3's colour-mode properties, plus the `-rgb` twins it derives from
+  color-scheme: dark;
   --bs-body-bg: #21252b;
   --bs-body-bg-rgb: 33,37,43;
   --bs-body-color: #CDCBBC;
@@ -29,6 +93,7 @@ html[data-bs-theme="dark"] {
   --bs-link-hover-color: #81bff2;
   --bs-link-hover-color-rgb: 129,191,242;
   --bs-code-color: #fc9867;
+  --highlight: #61afef;
 
   // the heading ladder
   h1 { color: #FEF1A1; }

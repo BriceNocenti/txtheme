@@ -160,17 +160,25 @@ The annotation classes keep their published colours and lose their boxes: on a r
 
 ### 7.3 The light half
 
-Every grid has a `light` column and every emitter reads it; today no colour fills one in, so the light half is pkgdown's and Quarto's own (`arrow-light` plus Bootstrap defaults) and **light is a mode argument, not a second writer**. Filling the column in is the whole of adding a light theme: `extra.scss` grows an unprefixed cascade, the brand file grows a `light:` line per role, and a second `.scss` / `.theme` pair appears for Quarto — with no change to any emitter.
+**Light is a mode argument, not a second writer**, and the light half proved it: filling `TX_PALETTE`'s `light` column was the whole of it. `extra.scss` grew an unprefixed cascade, a second `.scss` / `.theme` pair appeared for Quarto, the brand file grew a `light:` line per role — and no emitter changed. Three things did have to be decided, and none of them is a mirror image:
 
-## 8. What remains
+- **The chrome is the base light page**, near-white on a warm near-black (`#FFFFFF` / `#34332C`), because a course page is read as bookdown and pkgdown set one. The heading ladder mirrors the dark one but *shallowly* — L 0.240 to 0.320, ceilinged on the ink instead of floored on it — and it is nearly monochrome by necessity: at that lightness the warm hue holds 0.05 of chroma at most. The size carries the hierarchy; the warmth only says whose page it is.
+- **The code colours are anchored on CHROMA, and lightness follows the hue.** A flat lightness cannot work: at L 0.52 the green and the cyan are already at the sRGB ceiling while the pink has room to spare, so the palette flattens exactly where it should not. Every hand-made light palette has the other shape — Flexoki 600 spans L 0.45–0.63, Atom One Light 0.52–0.71 — and this is that shape, derived: each hue is asked for C 0.145 and takes the first lightness that can hold it. `dev/solve_light_tokens.R` is the search, kept runnable. Its one real cost is the cyan, which can only hold that chroma high up and so comes out bright (APCA 40 against the code ground, where the other five sit at 63–84); it was read on the page and kept, `DataType` being a rare token in R and set in italics.
+- **Two things deliberately do NOT flip.** `strong` is black on white and gold on a dark page — bold is loud enough as bold on white, and is not on a dark ground, which is what `TX_SLOTS`' `colour_light` column exists for. And the gold itself stays one colour in both modes: a yellow darkened for a light page goes muddy, and this one had already been read on white. So the blockquote rule and the `resultat` annotation keep it, and only `strong` changes side.
 
-**The courses and the books** (`~/github/formations_stat`) are the migration this framework was built for, and they are a separate project: that repository is 100 % bookdown with no `.qmd` files at all. The order, when it happens:
+The one thing a light half could quietly skip is measurement, so it does not: `.tx_check_mode()` runs the same re-derivation per mode, and a light hex with no coordinate beside it fails the install.
 
-1. **Pilot one course in Quarto**, the shortest one. Two things must survive the move: `webexercises` (its `.qmd` path already exists — `webexercises::add_to_quarto()`, and §9.1 is what makes it follow the switch) and the tabxplor tables (nothing to do — layer D ✓). What of `style.css` is worth keeping is inventoried in Appendix C: of its 769 lines, only about 80 are live CSS, and a third of those are table rules `tab_css()` has since absorbed.
-2. **The books.** A Quarto book is the same format plus `_quarto.yml`; the framework does not distinguish them.
-3. **Retire `style.css`** and the per-project `highlight:` lines.
+## 8. The courses, migrated
 
-Until then the bookdown courses keep working unchanged and can take the code theme alone, `highlight: !expr txtheme::txtheme_file("highlight/txtheme-dark.theme")` ✓ — no dark mode, which is what bookdown offers.
+**`~/github/formations_stat` is on Quarto** (its phase 1b), and the framework did not distinguish a document from a book: `format: txtheme-html` is what a séance writes and what the book writes, and the chapter renders alone. What that took, on this side:
+
+1. **The light half** (§7.3), because a page with a switch needs one.
+2. **The prose layer** — `inst/prose/prose.scss`, the ~40 live declarations of a 655-line hand-written sheet (Appendix B was the inventory). It ships as plain CSS to both consumers, unconditionally in Quarto and opt-in on pkgdown, because a heading family and a paragraph rhythm are a *course*'s voice.
+3. **The typeface, delivered.** `style.css` pulled DejaVu from `raw.githubusercontent.com` at page load — a third party in the render path, and nothing at all offline. The five faces are now subset (3.3 MB of TrueType → 112 kB of woff2, `dev/subset_fonts.sh`) and base64'd into the prose stylesheet, so there is no path for pkgdown, Quarto's extension copier and pandoc's `embed-resources` to each resolve differently.
+4. **`--highlight`**, declared here at last (§9.1), from the same colour the brand calls `primary`.
+5. **The annotation classes reach Quarto**, which they never did: the extension shipped only the theme.
+
+What tabxplor's tables needed was nothing — layer D ✓. What webexercises needed is §9.1, and it is applied.
 
 ## 9. What deliberately stays outside
 
@@ -200,9 +208,11 @@ A course page carries the switch, so the exercise widgets have to follow it — 
 | `.webex-incorrect, … label.webex-incorrect` | `color: black` | black on a dark-mode fill |
 | `.webex-correct, … label.webex-correct` | `color: black` | the same |
 
-**The fix is four one-word edits in the fork, not four override rules in the theme.** Each literal becomes a variable *with the literal as its fallback* — `background-color: var(--webex-field-bg, white)`, `color: var(--webex-answer-fg, black)` — so the file behaves **identically** where no theme is loaded, the theme needs no `!important` war against an `!important` rule, and the change is small enough to offer upstream. That refines §9's rule rather than breaking it: **the fork may turn a literal into a variable that keeps the literal as its fallback; it never gains a colour of its own.**
+**The fix was four one-word edits in the fork, not four override rules in the theme.** Each literal became a variable *with the literal as its fallback* — `background-color: var(--webex-field-bg, white)`, `color: var(--webex-answer-fg, black)` — so the file behaves **identically** where no theme is loaded, the theme needs no `!important` war against an `!important` rule, and the change is small enough to offer upstream. That refines §9's rule rather than breaking it: **the fork may turn a literal into a variable that keeps the literal as its fallback; it never gains a colour of its own.**
 
-The dark values themselves are a design decision, not a conversion: the pastels cannot simply be darkened, because a fill on a dark page reads as a **tint of the page**, not as a colour of its own. The shape that works is the same one the inline-code pill uses — the semantic hue at ~20 % alpha over whatever the page is, with the text left at the page's own foreground rather than forced to black.
+⚠ **`--highlight` moved the other way.** `webex.css` used to *declare* it in `:root`, which beat a theme's own declaration on source order — an extension's CSS is loaded after the theme bundle. It is now *read* with a fallback, `var(--highlight, #467AAC)`, at each of its five use sites and declared nowhere; a page with a theme gets the theme's, a bare page gets the literal. The theme owes it, from `brand.primary`, and now provides it.
+
+**The dark values are the fork's own, derived from its own colours** — which is what kept §9's rule intact after all. The pastels cannot simply be darkened, because a fill on a dark page reads as a **tint of the page**, not as a colour of its own; so under the four dark hooks `webex.css` sets `--incorrect_alpha: color-mix(in srgb, var(--incorrect) 22%, transparent)` and leaves the answer text at the page's foreground. No new colour is introduced, and webexercises works on a dark page with no theme at all.
 
 ---
 
@@ -241,7 +251,7 @@ Measured 2026-08-27 and 2026-08-28: pkgdown 2.2.1, bslib 0.11.0, sass 0.4.10 (li
 
 ⚠ **`--border-color` is used and never defined** (`resources/tab.css`, the `.lightable-classic` border rules). A `var()` that resolves to nothing makes the whole declaration invalid, so those borders have never been drawn. Nothing to port; worth knowing before anyone "restores" it.
 
-**The candidates.** Nothing below is applied yet — this is the list to choose from.
+**The candidates — all decided.** 1, 2, 4, 5, 6, 8, 9 and 10 are `inst/prose/prose.scss`; 3 and 7 were dropped, for the reasons the file's own header states. What follows is why each was worth a sentence.
 
 | # | element | what it does | note |
 |---|---|---|---|
@@ -258,7 +268,7 @@ Measured 2026-08-27 and 2026-08-28: pkgdown 2.2.1, bslib 0.11.0, sass 0.4.10 (li
 
 Four of them deserve a sentence before they are chosen:
 
-- **#1 fonts.** Worth keeping for a reason beyond taste: `tab_css()` already asks for *DejaVu Sans Condensed* for table text, so the course typeface and the tables' agree today by coincidence. But the delivery must change: `style.css` pulls the `.ttf` from `raw.githubusercontent.com` on every page load — a third party in the render path, serving a file GitHub does not promise to keep at that URL. Bundle the woff2 in txtheme, or take the face from Google/Bunny through `typography.fonts`.
+- **#1 fonts — kept, and delivered.** Worth keeping for a reason beyond taste: `tab_css()` asks for *DejaVu Sans Condensed* for table text, so the course typeface and the tables' agree. Neither Google nor Bunny serves DejaVu, and a CDN would not help a student reading offline, so the five faces are subset and base64'd into the prose stylesheet: 3.3 MB of TrueType becomes 112 kB, about 0.15 MB once inlined in a page that already weighs five.
 - **#3 heading spacing.** `h2 { padding-top: 150px }` is not typography, it is a scroll offset for a fixed header — and it also pushes 150 px of blank into every printed page. Quarto handles anchor offsets itself; if the intent survives the move, `scroll-margin-top` is the property that means it.
-- **#7 columns.** Quarto's own `:::{.columns}` / `.grid` do this with layout attributes and degrade properly on a phone. Keeping `.column-display` as an alias costs three lines; porting the documents costs a search-and-replace. Either is defensible — but keeping both is not.
-- **#10 code wrapping.** `pre { word-break: normal; word-wrap: normal }` stops long code lines from breaking mid-token, which is right, and is what pkgdown and tabxplor already do (with a horizontal scroll). `p code { white-space: inherit }` is the opposite bet — it lets *inline* code wrap anywhere, including mid-identifier. Worth confirming that this was deliberate before porting it.
+- **#7 columns — dropped, the documents ported.** Quarto's own `::: {layout-ncol=2}` does this with layout attributes and degrades on a phone. Nine blocks were rewritten; keeping an alias as well as the native form was the one option worth refusing.
+- **#10 code wrapping — kept, both halves.** `pre { word-break: normal; word-wrap: normal }` stops a code BLOCK breaking mid-token, which is what pkgdown and tabxplor already do; `p code { white-space: inherit }` is the opposite bet for INLINE code, and it is the right one — a function name in the middle of a sentence must not push the paragraph into a horizontal scrollbar.

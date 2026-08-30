@@ -1,8 +1,8 @@
 # txtheme
 
-One palette for pkgdown, Quarto and the editor.
+One palette for pkgdown, Quarto and the editor, light and dark.
 
-A colour is decided **once**, in one declared grid, and every consumer reads what the generator wrote from it. There is no design system here — a palette, a code theme, and a handful of prose rules.
+A colour is decided **once**, in one declared grid, and every consumer reads what the generator wrote from it. There is no design system here — a palette, a code theme, the course typography, and twelve annotation classes.
 
 ## What a consumer writes
 
@@ -21,18 +21,21 @@ and `DESCRIPTION`:
 Config/Needs/website: pkgdown, BriceNocenti/txtheme
 ```
 
-That is the whole of it: the dark chrome, the six-level heading ladder, the prose rules and the 31 syntax colours arrive as one SCSS layer, plus the JS shim that gives an R argument name its colour.
+That is the whole of it: both halves of the chrome, the six-level heading ladder, the prose rules and the 31 syntax colours arrive as one SCSS layer, plus the JS shim that gives an R argument name its colour.
 
-⚠ **`light-switch: true` is load-bearing.** Every rule txtheme ships is scoped `html[data-bs-theme="dark"]`, and pkgdown only emits the dark cascade when the switch is on. Without it nothing matches, silently and with no error.
+⚠ **`light-switch: true` is load-bearing for the dark half.** Every dark rule is scoped `html[data-bs-theme="dark"]`, and pkgdown only emits that cascade when the switch is on. Without it the site keeps the light half — which is correct, just never switchable, silently and with no error.
 
-The twelve pandoc-span annotation classes are **opt-in**, because pkgdown styles `pre code .error` and `pre code .warning` itself and a reference page really does emit `<span class="warning">` for an example's warning:
+Two extras are **opt-in** on pkgdown, and both are on unconditionally in Quarto:
 
 ```yaml
 template:
   params:
     txtheme:
-      annotations: true
+      annotations: true   # the twelve pandoc-span classes
+      prose: true         # the course typography
 ```
+
+`annotations` is opt-in because pkgdown styles `pre code .error` and `pre code .warning` itself, and a reference page really does emit `<span class="warning">` for an example's warning. `prose` is opt-in because a heading family and a paragraph rhythm are a *course*'s voice, and a reference site may not want them.
 
 **A Quarto document or project** — install the extension once, then name the format:
 
@@ -44,16 +47,20 @@ quarto add BriceNocenti/txtheme
 format: txtheme-html
 ```
 
-For the palette by name (`--brand-gold`, `brand.color.palette.accent`, and the semantic roles), put the brand file at the project **root** — `txtheme::use_brand()` copies it there. Quarto discovers a `_brand.yml` at a project root with no YAML at all.
+That one line brings both halves of the theme with Quarto's own light/dark switch (light first, so light is the default), the code colours for each, the course typography — the DejaVu faces included, base64'd in, so the page asks nothing of the network — and the twelve annotation classes.
+
+For the semantic roles (`primary`, `danger`, …, which is what Bootstrap's own components read) and for the annotation colours by name (`var(--brand-concept)`), put the brand file at the project **root** — `txtheme::use_brand()` copies it there. Quarto discovers a `_brand.yml` at a project root with no YAML at all.
+
+⚠ A `color.palette` entry must be a single string: Quarto's schema refuses `{light:, dark:}` there, though a ROLE takes both. So the roles are written per mode as literal hexes, and the palette names only the colours that are the same in both — the annotation hues, which were built to clear either ground.
 
 ⚠ `brand:` must never sit under `format: html:`. Nested there it is silently ignored: the render succeeds, the light and dark stylesheets come out byte-identical, and none of the colours appear.
 
-**A bookdown or R Markdown page** — no dark mode, but the code theme travels:
+**A bookdown or R Markdown page** — no dark mode, but a code theme travels:
 
 ```yaml
 output:
   bookdown::html_document2:
-    highlight: !expr txtheme::txtheme_file("highlight/txtheme-dark.theme")
+    highlight: !expr txtheme::txtheme_file("highlight/txtheme-light.theme")
 ```
 
 **The editor** — `inst/editor/token-colors.json` holds a ready `textMateRules` array to paste under `editor.tokenColorCustomizations` in `settings.json`. This step is a paste by construction: editor settings have no include mechanism, so no repository layout could make it automatic.
@@ -79,6 +86,7 @@ Four grids in `R/aaa-palette.R`, split by the namespace each key belongs to, bec
 | `TX_SLOTS` | place a colour is painted — a Bootstrap property, a custom property, or a selector |
 | `TX_TOKENS` | syntax token, all 31 of skylighting's, once each |
 | `TX_BRAND` | Quarto brand colour role |
+| `TX_FONTS` | shipped face — its family, weight and style |
 
 Adding a colour is one row. Every reference between grids is a foreign key, checked when the namespace loads, so a rename that breaks one fails the install rather than a website build three repositories away.
 

@@ -6,13 +6,26 @@
 #     grid row too. That single formatting rule is what makes the output diffable and the
 #     idempotence check meaningful.
 #   - The dark cascade is prefixed `html[data-bs-theme="dark"]`, the light one is not: LIGHT IS A
-#     MODE ARGUMENT, NOT A SECOND WRITER. Today no colour declares a `light` value, so the light
-#     half is empty and pkgdown's own is what a light page gets.
+#     MODE ARGUMENT, NOT A SECOND WRITER. Every writer here takes `mode` and reads the grids again;
+#     there is no light-specific code anywhere, and a third mode would be a third call.
 #   - No dates in any banner. A generated file must be reproducible byte for byte, which is what
 #     build_theme(check = TRUE) tests.
 # See: R/build-theme.R for the stage list, R/aaa-palette.R for the grids.
 
+# ⚠ `color-scheme` is emitted per mode alongside the palette, and it is not decoration: it is the
+# ONLY thing that tells the browser to draw its own widgets -- a bare <textarea>, an <input>, a
+# scrollbar, a date picker -- in that mode. Bootstrap 5.3 sets it under [data-bs-theme], which
+# Quarto never writes (it swaps whole stylesheets instead), so without this line a dark course page
+# shows white answer fields with black text: readable, and obviously not part of the page.
+
 DARK_PREFIX <- 'html[data-bs-theme="dark"]'
+
+# The selectors a host uses to say "this page is dark", for a stylesheet loaded in BOTH modes -- the
+# annotations asset and the prose layer. Deliberately the same four tabxplor's tab_css() writes
+# against (R/tab-css.R, tx_dark_hooks), so a table and an annotation on the same page can never
+# disagree about which mode they are in.
+TX_DARK_HOOKS <- c("html[data-bs-theme=\"dark\"]", "body.quarto-dark",
+                   "[data-theme=\"dark\"]", "html.dark")
 
 # The banner every generated file opens with. `comment` is "//" for scss, "/*" for a css/scss file
 # something else PARSES -- the flat highlight sheet is read back by tabxplor's preview tool, whose
@@ -26,37 +39,66 @@ tx_banner <- function(what, style = c("//", "/*")) {
   if (style == "//") out else c(out, "   */")
 }
 
-# The hex a colour shows in one mode. NA where the mode has no value -- which is how a light half
-# that has not been decided yet stays empty rather than becoming a guess.
+# The hex a colour shows in one mode. An UNDECLARED mode falls back to `dark`, the half the palette
+# was designed in -- because a colour that declares only one value is MODE-INDEPENDENT by
+# construction, not undecided: the ten annotation hues sit at medium OKLCH lightness with chroma
+# capped, chosen to clear both #FFFFFF and a dark ground, and the gold was read on white before it
+# was kept. That fallback is why nothing downstream needs a special case for them.
 tx_hex <- function(colour, mode = "dark") {
   row <- TX_PALETTE[[colour]]
   if (is.null(row)) stop("txtheme: no colour named '", colour, "'")
   v <- row[[mode]]
-  if (tx_empty(v)) NA_character_ else v
+  if (tx_empty(v)) row[["dark"]] else v
+}
+
+# Whether a mode is DECLARED, which is a different question from what tx_hex() hands back: the
+# fallback above would otherwise report every mode as present.
+tx_has_mode <- function(mode) {
+  any(vapply(TX_PALETTE, function(r) !tx_empty(r[[mode]]), logical(1)))
+}
+
+# The colour a SLOT is painted with in one mode. Almost always one colour in both; `bold` is the
+# exception the `colour_light` column exists for -- black on white, gold on a dark page, because
+# bold is loud enough on white without a hue and is not on a dark ground.
+tx_slot_colour <- function(slot, mode = "dark") {
+  alt <- slot[[paste0("colour_", mode)]]
+  if (tx_empty(alt)) slot$colour else alt
 }
 
 # What a slot writes as a value: the hex, or the hex at an opacity. rgba() and not an 8-digit hex,
 # because bootstrap writes its own derived colours that way and one form beats two.
 tx_value <- function(slot, mode = "dark") {
-  hex <- tx_hex(slot$colour, mode)
+  hex <- tx_hex(tx_slot_colour(slot, mode), mode)
   if (is.na(hex)) return(NA_character_)
   if (tx_empty(slot$alpha)) hex
   else sprintf("rgba(%s,%s)", hex_rgb(hex), format(slot$alpha, trim = TRUE))
 }
 
-tx_has_mode <- function(mode) any(!is.na(vapply(names(TX_PALETTE), tx_hex, character(1), mode = mode)))
-
 # --- the four sections ----------------------------------------------------------------------------
 
+# A chrome row paints either one of bootstrap's colour-mode properties or a custom property of ours
+# (`--highlight`). Both are DECLARATIONS on whatever element the caller has opened, which is what
+# lets pkgdown's dark block and Quarto's `:root` share one writer.
 tx_chrome_decls <- function(mode = "dark") {
   out <- character(0)
   for (s in tx_where(TX_SLOTS, "emit", "chrome")) {
     v <- tx_value(s, mode)
     if (is.na(v)) next
-    out <- c(out, sprintf("%s: %s;", s$bs_var, v))
-    if (!tx_empty(s$bs_rgb)) out <- c(out, sprintf("%s: %s;", s$bs_rgb, hex_rgb(tx_hex(s$colour, mode))))
+    out <- c(out, sprintf("%s: %s;", if (tx_empty(s$bs_var)) s$css_var else s$bs_var, v))
+    if (!tx_empty(s$bs_rgb))
+      out <- c(out, sprintf("%s: %s;", s$bs_rgb, hex_rgb(tx_hex(tx_slot_colour(s, mode), mode))))
   }
   out
+}
+
+# The custom properties among them, for a consumer that takes its chrome as SASS VARIABLES and so
+# has nowhere to put a `--foo`. Quarto is the only such consumer today.
+tx_chrome_css_vars <- function(mode = "dark") {
+  rows <- Filter(function(s) tx_empty(s$bs_var), tx_where(TX_SLOTS, "emit", "chrome"))
+  out  <- vapply(rows, function(s) {
+    v <- tx_value(s, mode); if (is.na(v)) NA_character_ else sprintf("%s: %s;", s$css_var, v)
+  }, character(1), USE.NAMES = FALSE)
+  out[!is.na(out)]
 }
 
 # Slot rows folded into rules: one rule per selector, in first-appearance order, carrying every
@@ -107,7 +149,7 @@ tx_drop_empty <- function(x) x[nzchar(x)]
 emit_extra_scss <- function() {
   body <- function(mode) c(
     "// the chrome -- bootstrap 5.3's colour-mode properties, plus the `-rgb` twins it derives from",
-    tx_chrome_decls(mode), "",
+    sprintf("color-scheme: %s;", mode), tx_chrome_decls(mode), "",
     "// the heading ladder", tx_drop_empty(tx_selector_rules("heading", mode)), "",
     "// prose -- what the editor theme colours in markdown, and bootstrap has no variable for",
     tx_drop_empty(tx_selector_rules("prose", mode)), "",
@@ -115,7 +157,7 @@ emit_extra_scss <- function() {
     tx_drop_empty(tx_token_rules(mode)))
 
   light <- if (tx_has_mode("light")) c(
-    ":root {", paste0("  ", tx_chrome_decls("light")), "}", "",
+    ":root {", "  color-scheme: light;", paste0("  ", tx_chrome_decls("light")), "}", "",
     tx_drop_empty(c(tx_selector_rules("heading", "light"), tx_selector_rules("prose", "light"),
                     tx_token_rules("light"))), "")
 
@@ -177,13 +219,38 @@ emit_quarto_scss <- function(mode = "dark") {
     v <- tx_value(s, mode)
     if (!is.na(v)) defaults <- c(defaults, sprintf("%s: %s;", s$sass_var, v))
   }
-  rules <- tx_drop_empty(c(tx_selector_rules("heading", mode), tx_selector_rules("prose", mode)))
+  css_vars <- tx_chrome_css_vars(mode)
+  rules <- tx_drop_empty(c(
+    sprintf(":root { color-scheme: %s;%s }", mode,
+            if (length(css_vars)) paste0(" ", paste(css_vars, collapse = " ")) else ""),
+    tx_selector_rules("heading", mode), tx_selector_rules("prose", mode)))
   c(tx_banner(c("", paste0("The ", mode, " half of the Quarto theme, contributed by _extensions/txtheme."),
                 "Chrome as bootstrap SASS VARIABLES: unlike pkgdown, Quarto compiles bootstrap from",
                 "them, so the derived colours and every `-rgb` twin follow on their own."),
               style = "/*"),
     "", "/*-- scss:defaults --*/", defaults,
     "", "/*-- scss:rules --*/", rules)
+}
+
+# --- the prose layer ------------------------------------------------------------------------------
+
+# TYPOGRAPHY, and no colour at all -- so ONE text serves both consumers and both modes, and it ships
+# as plain CSS to each. Quarto takes it under `css:`, NOT as a theme layer: a theme is compiled once
+# per mode, so a mode-independent layer named there would be built into both bundles, and a `.scss`
+# in a theme list must declare a layer boundary it has no use for. pkgdown takes it as an opt-in
+# asset beside the annotations one, because `p { margin-top }` and a heading family are a COURSE's
+# voice and a reference site may not want them: `template: params: {txtheme: {prose: true}}`.
+emit_prose_scss <- function(prose, path = ".") {
+  c(tx_banner(c("", "The course typography: the typeface, headings, paragraph rhythm, code wrapping,",
+                "the two prose classes and the exercise title.",
+                "",
+                "The five DejaVu faces are base64'd in below -- 112 kB of subset woff2, so the page",
+                "carries its own typeface and asks nothing of the network. Then",
+                "inst/prose/prose.scss, unchanged.",
+                "",
+                "Not one COLOUR appears here, which is why one file serves both modes."),
+              style = "/*"),
+    "", emit_font_faces(path), "", prose)
 }
 
 # --- the annotations asset ------------------------------------------------------------------------
@@ -193,12 +260,29 @@ emit_quarto_scss <- function(mode = "dark") {
 # `.non, .error {text-decoration: underline double}` in the site-wide layer would decorate every
 # warned example on the site. A consumer asks for it with
 # `template: params: {txtheme: {annotations: true}}`.
-emit_annotations_css <- function(prose, mode = "dark") {
-  vars <- vapply(tx_where(TX_SLOTS, "emit", "annotation"), function(s) {
+emit_annotations_css <- function(prose) {
+  var_lines <- function(mode) vapply(tx_where(TX_SLOTS, "emit", "annotation"), function(s) {
     v <- tx_value(s, mode); if (is.na(v)) NA_character_ else sprintf("  %s: %s;", s$css_var, v)
   }, character(1), USE.NAMES = FALSE)
+
+  # LIGHT IS THE DEFAULT AND DARK IS HOOKED -- the shape tabxplor's tab_css() already writes, and the
+  # one that degrades correctly: a page with no hook at all gets the light half, which is what a
+  # printed page and an un-themed host are. Ten of the twelve colours are the same either way (see
+  # TX_PALETTE's annotation block), so the hooked layer carries only the ones that actually differ.
+  light <- var_lines("light"); dark <- var_lines("dark")
+  base   <- light
+  differ <- light != dark
+
   c(tx_banner(c("", "The twelve pandoc-span annotation classes: their colours from TX_PALETTE, their",
-                "typography from inst/prose/annotations.scss, appended below unchanged."),
+                "typography from inst/prose/annotations.scss, appended below unchanged.",
+                "",
+                "The palette is mode-independent BY CONSTRUCTION -- every annotation hue sits at",
+                "medium OKLCH lightness with chroma capped, chosen to clear both #FFFFFF and a dark",
+                "ground. The one exception is the RESULT, which is the prose emphasis colour and so",
+                "follows it; that is the whole of the hooked block below."),
               style = "/*"),
-    "", ":root {", vars[!is.na(vars)], "}", "", prose)
+    "", ":root {", base[!is.na(base)], "}",
+    if (any(differ)) c("", paste0(paste(TX_DARK_HOOKS, collapse = ", "), " {"),
+                       dark[differ], "}"),
+    "", prose)
 }

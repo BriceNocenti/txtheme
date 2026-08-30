@@ -17,6 +17,7 @@ $link-hover-color: #81bff2;
 $code-color: #fc9867;
 
 /*-- scss:rules --*/
+:root { color-scheme: dark; --highlight: #61afef; }
 h1 { color: #FEF1A1; }
 h2 { color: #F5E9A3; }
 h3 { color: #ECE2A4; }

@@ -49,15 +49,19 @@ use_brand <- function(dir = ".", single_mode = FALSE) {
 # What the generator writes, and where. A named list of path -> lines, built once so `check = TRUE`
 # and the real write share every byte of their logic.
 tx_outputs <- function(path = ".") {
-  prose <- readLines(file.path(path, "inst", "prose", "annotations.scss"), warn = FALSE)
-  modes <- c("dark", if (tx_has_mode("light")) "light")
+  hand  <- function(f) readLines(file.path(path, "inst", "prose", f), warn = FALSE)
+  modes <- Filter(tx_has_mode, TX_MODES)
 
   out <- list(
-    "inst/pkgdown/BS5/extra.scss"                   = emit_extra_scss(),
-    "inst/pkgdown/BS5/assets/txtheme-annotations.css" = emit_annotations_css(prose),
-    "inst/brand/_brand.yml"                         = emit_brand_unified(),
-    "inst/brand/_brand-dark.yml"                    = emit_brand_single("dark"),
-    "inst/editor/token-colors.json"                 = emit_editor_json("dark"))
+    "inst/pkgdown/BS5/extra.scss"                     = emit_extra_scss(),
+    "inst/pkgdown/BS5/assets/txtheme-annotations.css" = emit_annotations_css(hand("annotations.scss")),
+    "inst/pkgdown/BS5/assets/txtheme-prose.css"       = emit_prose_scss(hand("prose.scss"), path),
+    "_extensions/txtheme/txtheme-annotations.css"     = emit_annotations_css(hand("annotations.scss")),
+    "_extensions/txtheme/txtheme-prose.css"           = emit_prose_scss(hand("prose.scss"), path),
+    "inst/brand/_brand.yml"                           = emit_brand_unified(),
+    "inst/brand/_brand-dark.yml"                      = emit_brand_single("dark"),
+    "inst/brand/_brand-light.yml"                     = emit_brand_single("light"),
+    "inst/editor/token-colors.json"                   = emit_editor_json("dark"))
 
   # The .theme is written TWICE on purpose, and it is one emitter either way: `_extensions/` is
   # .Rbuildignore'd (a Quarto user gets it with `quarto add`, never from the R library), while the
@@ -81,10 +85,10 @@ tx_contrast_report <- function(mode = "dark") {
   rows <- Filter(function(s) !tx_empty(s$ground), TX_SLOTS)
   data.frame(
     slot   = names(rows),
-    colour = vapply(rows, function(s) s$colour, character(1)),
+    colour = vapply(rows, tx_slot_colour, character(1), mode = mode),
     on     = vapply(rows, function(s) s$ground, character(1)),
     Lc     = vapply(rows, function(s)
-                abs(apca(tx_hex(s$colour, mode), tx_hex(s$ground, mode))), numeric(1)),
+                abs(apca(tx_hex(tx_slot_colour(s, mode), mode), tx_hex(s$ground, mode))), numeric(1)),
     row.names = NULL, stringsAsFactors = FALSE)
 }
 
@@ -110,9 +114,9 @@ build_theme <- function(path = ".", check = FALSE, quiet = FALSE) {
   tx_check_grids()
   out <- tx_outputs(path)
 
-  if (!quiet) {
-    r <- tx_contrast_report("dark")
-    message("contrast, dark (APCA |Lc|):")
+  if (!quiet) for (m in Filter(tx_has_mode, TX_MODES)) {
+    r <- tx_contrast_report(m)
+    message("contrast, ", m, " (APCA |Lc|):")
     message(paste0("  ", formatC(r$slot, width = 18, flag = "-"), " ",
                    formatC(r$colour, width = 14, flag = "-"), " on ",
                    formatC(r$on, width = 6, flag = "-"), " ",
