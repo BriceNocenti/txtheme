@@ -21,8 +21,8 @@ screenshot(
 \arguments{
 \item{page}{Path to a rendered \code{.html}, or a \verb{file://} / \verb{http://} URL.}
 
-\item{selector}{A CSS selector. Several matches are allowed: the shot is their bounding box, and
-the count is announced. No match is an error.}
+\item{selector}{A CSS selector. Several matches are allowed: the shot is the bounding box of the
+ones that are painted, and the count is announced. No match, or nothing painted, is an error.}
 
 \item{mode}{\code{"light"}, \code{"dark"}, or both (the default) -- one file each.}
 
@@ -66,7 +66,9 @@ building itself: the light/dark switch, and anything a filter's javascript adds,
 before it.
 
 What is captured is the element's border box, padded by \code{expand} -- an exercise's frame is part
-of what one wants to see.
+of what one wants to see -- cut down by every ancestor that clips it. An element a closed
+solution or a collapsed panel hides is therefore refused rather than captured: it is laid out
+where it says, and painted nowhere. Open it first with an \code{actions} click.
 }
 \examples{
 \dontrun{
