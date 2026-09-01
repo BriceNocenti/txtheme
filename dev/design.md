@@ -85,6 +85,8 @@ One repository, `BriceNocenti/txtheme`, that is both an R package and a Quarto e
 
 The alternatives were weighed and rejected. Inside tabxplor: it is a CRAN package about cross-tables, personal branding is out of its scope, and it would tie a theme's release cycle to a statistics package's. Inside the webexercises fork: that fork tracks an upstream, and the more it carries that upstream does not, the harder every rebase gets. No package at all, files copied per project: that is exactly the 769-line `style.css`, four times over.
 
+`R/capture.R` sits here for the same reason (§10): the three conventions a page can use to say which mode it is in are this package's business, so the one file that must know all three belongs beside them.
+
 ### 5.1 And the editor extension — separate, and one-directional
 
 Only the **palette** is shared with the editor; not code. The editor consumes it as `editor.tokenColorCustomizations` JSON, pkgdown as scss, Quarto as a `.theme` file and a brand file — one small data table plus generators, which a single repository gives you and which a generator writing a second repository gives you just as well.
@@ -175,10 +177,33 @@ The one thing a light half could quietly skip is measurement, so it does not: `.
 1. **The light half** (§7.3), because a page with a switch needs one.
 2. **The prose layer** — `inst/prose/prose.scss`, the ~40 live declarations of a 655-line hand-written sheet (Appendix B was the inventory). It ships as plain CSS to both consumers, unconditionally in Quarto and opt-in on pkgdown, because a heading family and a paragraph rhythm are a *course*'s voice.
 3. **The typeface, delivered.** `style.css` pulled DejaVu from `raw.githubusercontent.com` at page load — a third party in the render path, and nothing at all offline. The five faces are now subset (3.3 MB of TrueType → 112 kB of woff2, `dev/subset_fonts.sh`) and base64'd into the prose stylesheet, so there is no path for pkgdown, Quarto's extension copier and pandoc's `embed-resources` to each resolve differently.
-4. **`--highlight`**, declared here at last (§9.1), from the same colour the brand calls `primary`.
+4. **`--highlight`**, declared here at last (§9.1) — the accent of the exercise chrome, and the second slot to change side with the mode.
 5. **The annotation classes reach Quarto**, which they never did: the extension shipped only the theme.
+6. **The code ground, as a Sass variable** (§8.1) — the rule layer reached the output blocks only.
+7. **The light/dark switch, put where it can be used** (§8.2), and the heading rhythm that makes a six-level séance legible: an air ladder before `h1`–`h6`, and `opacity: 1` back on `h3`–`h6`, which Quarto dims to 0.9 — that is, it dilutes exactly the rungs §7.2's chroma ceiling had the least room for.
 
 What tabxplor's tables needed was nothing — layer D ✓. What webexercises needed is §9.1, and it is applied.
+
+### 8.1 The code ground, which a rules layer could not reach
+
+`pre { background-color: <code-page> }` was written, correct, and reached almost nothing. **Quarto paints a highlighted block on `div.sourceCode` and makes `pre.sourceCode` transparent** (`_bootstrap-rules.scss`), so a bare `pre` rule at (0,0,1) only ever coloured an *output* block; and inline code is painted on `p code:not(.sourceCode)` at (0,1,2), which outranks `:not(pre) > code`. Both values are `$gray-200` at 65 %, **the same literal in the light and the dark bundle**, so every code block a course shows sat pale grey on a dark page.
+
+The fix is declarative and belongs in `scss:defaults`: `$code-block-bg` and `$code-bg` (plus `$code-padding`), which Quarto derives its own rules from. Two consequences for the generator:
+
+- **a slot may paint in a rule *and* name a Sass variable.** `emit_quarto_scss()` used to emit `sass_var` for the `chrome` stage only; it now emits it for every slot that has one, so `code-ground` and `inline-code-pill` state their colour twice — once as the rule that covers a plain `<pre>`, once as the variable that covers the whole highlighted-block machinery. The two cannot disagree: they are one cell of `TX_PALETTE`.
+- **`sass_var` is not one of the three painters.** `R/zzz-checks.R` requires exactly one of `bs_var` / `css_var` / `selector` per slot, and a Sass variable is none of them — it says *how the value reaches the compiler*, not *what it paints*.
+
+### 8.2 The light/dark switch, moved rather than rebuilt
+
+Quarto's switch is created by its own after-body script and **appended to `<body>`** at `position: absolute; top: 1em; right: 1em` — so it scrolls out of view past the first screen and sits at the window's edge, nowhere near a centred reading column. It is 16 px, and its two glyphs are `background-image` SVGs whose `fill` is baked in at compile time, which is why they can only ever be grey.
+
+`_extensions/txtheme/txtheme-toggle.html`, an `include-after-body`, **moves that same element** to the head of `#quarto-margin-sidebar` — a column Quarto already gives `position: sticky` — and swaps its `top-right` class for `txtheme-toggle`. Three things make that the small change it looks like:
+
+- **the node is Quarto's**, so the click handler, the `alternate` class and the whole stylesheet-swapping machinery stay Quarto's; only the parent changes.
+- **`top-right` has to go.** Quarto styles it at (0,3,2), which beats every rule a `css:` layer can write. Dropping the class is what makes the switch styleable at all.
+- **the script runs on `DOMContentLoaded` *and* on `load`, and is idempotent.** Quarto creates the switch in its own `DOMContentLoaded` handler and nothing orders the two; `load` is the pass that cannot be too early.
+
+The glyphs become **masks** — `mask-image` plus `background-color: currentColor` — so one pair of shapes serves both modes and the fill is `var(--highlight)`: the accent blue on white, the gold on a dark page. A second `position: sticky`, inside the sidebar, is not redundant: that column is `overflow-y: auto`, so a long table of contents scrolls within it and would carry the switch away.
 
 ## 9. What deliberately stays outside
 
@@ -208,11 +233,38 @@ A course page carries the switch, so the exercise widgets have to follow it — 
 | `.webex-incorrect, … label.webex-incorrect` | `color: black` | black on a dark-mode fill |
 | `.webex-correct, … label.webex-correct` | `color: black` | the same |
 
-**The fix was four one-word edits in the fork, not four override rules in the theme.** Each literal became a variable *with the literal as its fallback* — `background-color: var(--webex-field-bg, white)`, `color: var(--webex-answer-fg, black)` — so the file behaves **identically** where no theme is loaded, the theme needs no `!important` war against an `!important` rule, and the change is small enough to offer upstream. That refines §9's rule rather than breaking it: **the fork may turn a literal into a variable that keeps the literal as its fallback; it never gains a colour of its own.**
+**The fix was one-word edits in the fork, not override rules in the theme.** A literal became a variable *with the literal as its fallback* — `background-color: var(--webex-field-bg, white)` — so the file behaves **identically** where no theme is loaded, the theme needs no `!important` war against an `!important` rule, and the change is small enough to offer upstream. That refines §9's rule rather than breaking it: **the fork may turn a literal into a variable that keeps the literal as its fallback; it never gains a colour of its own.**
 
-⚠ **`--highlight` moved the other way.** `webex.css` used to *declare* it in `:root`, which beat a theme's own declaration on source order — an extension's CSS is loaded after the theme bundle. It is now *read* with a fallback, `var(--highlight, #467AAC)`, at each of its five use sites and declared nowhere; a page with a theme gets the theme's, a bare page gets the literal. The theme owes it, from `brand.primary`, and now provides it.
+⚠ **The two `color: black` were the exception, and the answer was to delete them.** They became `color: var(--webex-answer-fg, black)` with `--webex-answer-fg: inherit` under the dark hooks — and `inherit` on a custom property that `:root` never declares is the **guaranteed-invalid value**, so `var()` fell straight through to its fallback and every chosen answer stayed black on a dark page. The rules simply do not set a colour now: both fills are tints of the page in either mode, so the page's own ink is the right ink. *A variable is the fix for a literal that must change; it is not the fix for a declaration that should not exist.*
 
-**The dark values are the fork's own, derived from its own colours** — which is what kept §9's rule intact after all. The pastels cannot simply be darkened, because a fill on a dark page reads as a **tint of the page**, not as a colour of its own; so under the four dark hooks `webex.css` sets `--incorrect_alpha: color-mix(in srgb, var(--incorrect) 22%, transparent)` and leaves the answer text at the page's foreground. No new colour is introduced, and webexercises works on a dark page with no theme at all.
+⚠ **`--highlight` moved the other way.** `webex.css` used to *declare* it in `:root`, which beat a theme's own declaration on source order — an extension's CSS is loaded after the theme bundle. It is now *read* with a fallback, `var(--highlight, #467AAC)`, at each of its five use sites and declared nowhere; a page with a theme gets the theme's, a bare page gets the literal. The theme owes it, and provides it.
+
+⚠ **And it changes side with the mode, like `bold` does.** It is the accent of the *exercise chrome* — box borders, check button, the `.exercise` underline — not the accent of the page's links, and the two want different colours on a dark ground: the blue that carries a link recedes there, where the gold is what the eye already reads as emphasis. So the `highlight` slot is the **second** row with a `colour_light`: `gold` on a dark page, `accent` on white. It is no longer `brand.primary` in both modes, and a brand role is the wrong place to say it — a role has one meaning, and this one has two.
+
+**The dark values are the fork's own, on one OKLCH rung** — which is what kept §9's rule intact after all. The four semantic colours keep their hue and their role and change only their lightness: L 0.52 on white, L 0.68–0.70 on a dark ground, chroma at the sRGB ceiling of the hue in each case. That is §7.2's own discipline, applied in another package: a set of colours reads as a family because one number moves and the rest is gamut.
+
+⚠ **A dark value is never a mix with white.** `--incorrect_text` used to be lifted by `color-mix(in srgb, #c60800 55%, white)`, which raises the lightness *and drops the chroma* — 0.211 to 0.131 — so the retry button read as a washed-out pink rather than as a red. Mixing towards white is a shortcut for lightening that costs exactly the thing that makes a semantic colour legible as itself.
+
+The two fills stay **derived**: `--incorrect_alpha: color-mix(in srgb, var(--incorrect) 22%, transparent)`, because a fill on a dark page reads as a **tint of the page** and not as a colour of its own. No new colour is introduced, and webexercises works on a dark page with no theme at all.
+
+---
+
+## 10. Seeing it — one element, both modes
+
+Everything above decides a colour by arithmetic. `screenshot()` (`R/capture.R`) is the other half: it opens a rendered page in a headless Chromium and writes a PNG of **one element**, once per mode — the browser's "screenshot node", not a picture of a window. A judgement about a verdict colour, a focus ring or a table's width is then made on the page, and §7.2's ladders are checked rather than trusted.
+
+**Why here.** The mode is this package's business — `body.quarto-dark` on a Quarto page, `data-bs-theme` on a pkgdown one, `prefers-color-scheme` under both — so the one file that has to know all three conventions belongs beside them. It serves every consumer: a course page, a pkgdown site, `dev/preview_theme.html`. `chromote` is a `Suggests`; nothing runs unless the function is called, and §4's install-in-seconds arithmetic is untouched.
+
+**Three things it refuses to do quietly**, because each would return a believable picture of the wrong thing: a selector that matches nothing, or matches only elements with no surface, stops; a page that ends up in the mode that was *not* asked for stops, after one attempt at Quarto's own `quartoToggleColorScheme()`; and a `click:` or `fill:` action whose selector matches nothing stops rather than doing nothing.
+
+**Two facts about the browser, both measured on Chromium 151.**
+
+- ⚠ **The page must be driven after `load`, never after `DOMContentLoaded`.** §8.2 already says the switch is created in Quarto's own `DOMContentLoaded` handler and that `load` is the pass that cannot be too early; the same holds for everything a filter's javascript adds. Before `load` those nodes do not exist, and a capture of them is a capture of nothing.
+- ⚠ **`chromote::ChromoteSession$screenshot(selector=)` cannot be used, and the reason is worth writing down.** It clamps the clip to the box of `html`, which on a Quarto page is only as tall as the viewport; an element below the fold therefore gets a clip of *negative* height, on which Chromium never answers at all — and chromote turns that timeout into a `warning()` and an empty file. `R/capture.R` measures the union of the border boxes in the page itself and clamps to `documentElement.scrollHeight`, which is the real bound, then calls `Page.captureScreenshot` with `captureBeyondViewport`.
+
+**The default is `scale = 1`, and that is measured too.** A whole exercise at 1× is legible and costs ~350 tokens to read; the same at 2× costs ~1300 and adds nothing a reader of prose needs. `2` is for judging a colour or a hairline. Above that nothing is gained: a content-column element then passes the 1568 px at which an image is shrunk again anyway. Each written file is announced with its pixel size and that cost, so the choice is made on a number rather than on a habit.
+
+⚠ **The cost alone would mislead, so the READ size is printed beside it.** A selector matching every table on a course page gives their bounding box — 1079 × 30033 px — which shrinks to a 56 px-wide strip and is charged 118 tokens. Cheap, and unreadable. The line therefore reads `1079 x 30033 px -> 56 x 1568 read ~118 tokens -- 31 nodes, bounding box ; shrunk to 5 %`, and only that middle term says what went wrong.
 
 ---
 
@@ -237,6 +289,10 @@ Measured 2026-08-27 and 2026-08-28: pkgdown 2.2.1, bslib 0.11.0, sass 0.4.10 (li
 - **rmarkdown takes a `.theme` file path in `highlight:`** — `highlight: !expr txtheme::txtheme_file("highlight/txtheme-dark.theme")` put the token colours in the rendered HTML.
 - **The two code-theme formats share one vocabulary** — a pandoc `.theme` has 31 `text-styles`; pkgdown's `.scss` files carry the same 31 as two-letter classes. A `_comments` key is accepted (pandoc's own `a11y-dark` carries one).
 - **tabxplor already follows both** — `tx_dark_hooks` (`R/tab-css.R`) contains `[data-bs-theme=dark]` *and* `body.quarto-dark`.
+- **⚠ Quarto's code background comes from `$code-block-bg` / `$code-bg`, and its default is mode-blind** — `$code-block-bg: true !default` resolves to `quarto-color.adjust($progress-bg, $alpha: -0.35)`, i.e. `$gray-200` at 65 %, compiled into `div.sourceCode` identically in both bundles. `pre.sourceCode` is set transparent beside it, so a theme's own `pre` rule reaches output blocks only. Inline code is `p code:not(.sourceCode)` at (0,1,2), from `$code-bg` — and only when `$code-bg` is *not* left at `$gray-100`.
+- **Quarto floats its colour-scheme switch from an after-body script** — `quarto-html-after-body.ejs` appends `<a class="top-right quarto-color-scheme-toggle"><i class="bi"></i></a>` to `<body>` *only if none exists*, then calls `setColorSchemeToggle()`. Moving that node keeps every behaviour; `.top-right` carries (0,3,2) glyph rules that no `css:` layer can beat.
+- **`#quarto-margin-sidebar` is `position: sticky; top: 0` with `overflow-y: auto`** — the table-of-contents column follows the reader, and its own content scrolls inside it.
+- **A format extension may contribute `include-after-body`** — the file ships with the format and a consuming document says nothing.
 - **⚠ `light-switch: true` is silently load-bearing** — `pkgdown:::bs_theme()` only appends the dark block `if (uses_lightswitch(pkg))`, and every txtheme rule is scoped under `html[data-bs-theme="dark"]`. Forgetting the switch means the theme never matches anything, with no error. Nothing in the generator can check a consumer's YAML, which is why it is a README line and a banner comment.
 
 ## Appendix B — what is left of the courses' `style.css`

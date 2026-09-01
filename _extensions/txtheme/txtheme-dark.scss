@@ -15,9 +15,12 @@ $border-color: #3e4451;
 $link-color: #61afef;
 $link-hover-color: #81bff2;
 $code-color: #fc9867;
+$code-bg: rgba(252,152,103,0.2);
+$code-block-bg: #1f1f1f;
+$code-padding: 3px 5px;
 
 /*-- scss:rules --*/
-:root { color-scheme: dark; --highlight: #61afef; }
+:root { color-scheme: dark; --highlight: #e6ae02; }
 h1 { color: #FEF1A1; }
 h2 { color: #F5E9A3; }
 h3 { color: #ECE2A4; }

@@ -85,6 +85,23 @@ p code        { white-space: inherit; }
 p             { margin-top: 0.5rem; margin-bottom: 0.125rem; }
 ul p, ol p    { margin-bottom: 0; }
 
+/* -- the list rhythm -------------------------------------------------------------------------------
+ * The courses write their lists TIGHT -- no blank line between the items, so pandoc emits a bare
+ * `<li>` and not `<li><p>`. That is the source style, and it is the right one; the air belongs
+ * here instead. FIRST LEVEL ONLY: a nested item stays tight against its parent, which is what makes
+ * a sub-list read as a detail of the bullet above rather than as a list of its own.
+ * `main` is the scope on purpose -- Quarto puts `nav#TOC` outside it and pkgdown its sidebar, so
+ * navigation keeps its own tight rhythm; the `nav` reset is the belt to that brace.
+ * WARNING: the `p:first-child` pair is not decoration. A list that is still LOOSE (an item holding
+ * two blocks forces the whole list loose) emits `<li><p>`, which already carries the paragraph's
+ * own `margin-top` -- without the reset that item would get both and space at nearly double. The
+ * nested rule hands the paragraph back its margin, so a loose sub-list keeps the air it had.      */
+main ul > li,               main ol > li               { margin-top: 0.4rem; }
+main ul > li > p:first-child, main ol > li > p:first-child { margin-top: 0; }
+main li ul > li,            main li ol > li            { margin-top: 0; }
+main li ul > li > p:first-child, main li ol > li > p:first-child { margin-top: 0.5rem; }
+main nav ul > li                                       { margin-top: 0; }
+
 /* -- the heading voice -----------------------------------------------------------------------------
  * The family is DejaVu Sans with a real fallback stack: the same first choice tab_css() makes for
  * table text, so a table and the heading above it agree. h4 down is where the course's own voice
@@ -94,6 +111,28 @@ h1, h2, h3, h4, h5, h6 { font-family: "DejaVu Sans", Arial, Helvetica, sans-seri
 h4            { text-decoration: underline solid; }
 h5            { font-size: 1rem; }
 h6            { font-size: 0.875rem; font-style: italic; }
+
+/* -- the heading rhythm ----------------------------------------------------------------------------
+ * The AIR before a heading is what makes a structure legible at a glance, and it has to grow with
+ * the level: Quarto gives 2rem to h1 and h2 alike, 1.5rem to h3 and h4, and NOTHING to h5 and h6, so
+ * a séance nesting six levels deep read as one undifferentiated column. The ladder below is the
+ * heading sizes' own hierarchy, said again in white space.
+ * The two rules Quarto scopes higher are deliberately left alone: `h1.title` and the FIRST heading
+ * of the page keep their zero, or the title block and the section under it would be parted twice.
+ * WARNING: `opacity` is not a detail here. Quarto draws h3 to h6 at 0.9, which washes out exactly
+ *   the rungs whose chroma the OKLCH ladder had the least room for -- the six colours are chosen
+ *   against the page, and a translucent heading is not the colour that was measured.             */
+h1            { margin-top: 4rem; }
+h2            { margin-top: 3rem; }
+h3            { margin-top: 2.25rem; }
+h4            { margin-top: 1.75rem; }
+h5            { margin-top: 1.25rem; }
+h6            { margin-top: 1rem; }
+h3, h4, h5, h6 { opacity: 1; }
+
+/* The page's own title needs room above it: it is the first thing on the page, and it read as glued
+ * to the browser chrome. `padding`, not `margin`, so it cannot collapse with the block below.    */
+#title-block-header { padding-block-start: 4cm; }
 
 /* -- the two opt-in prose classes ------------------------------------------------------------------
  * WARNING: the source said `line-height: 60%`, which is 0.48rem against a 0.8rem font -- two lines
@@ -107,9 +146,62 @@ h6            { font-size: 0.875rem; font-style: italic; }
  * courses' original rule with the span named. `--highlight` is the theme's (TX_SLOTS), which is why
  * a page can now carry this underline without webexercises loaded.
  * `text-decoration-skip-ink: none` is what makes the rule run under the descenders instead of
- * breaking around every `p` and `q`.                                                              */
+ * breaking around every `p` and `q`.
+ * `display: block` puts the statement on its own line. Quarto's crossref normalize PREPENDS the
+ * title span into the first paragraph of the theorem's body, so the two shared a line and read as
+ * one sentence; the AST offers no seam to cut, and hoisting the body out of the div -- tried once
+ * -- leaves a non-breaking space behind every title.                                             */
 .exercise .theorem-title {
+  display:                   block;
+  width:                     fit-content;   /* the rule hugs the title, it is not a page-wide bar */
+  margin-block-end:          0.35em;
   font-size:                 1rem;
   text-decoration:           underline solid var(--highlight, currentColor) 3px;
   text-decoration-skip-ink:  none;
 }
+
+/* -- the light/dark switch -------------------------------------------------------------------------
+ * Quarto FLOATS its switch at `position: absolute; top: 1em; right: 1em` on the far edge of the
+ * window -- so it scrolls out of view after the first screen, and it sits nowhere near the reading
+ * column. _extensions/txtheme/txtheme-toggle.html moves the very same element to the head of the
+ * table-of-contents column, which is already `position: sticky`, and swaps `top-right` for the two
+ * classes below; everything here therefore styles OUR classes and never fights Quarto's own rules,
+ * some of which are (0,3,2) and would win.
+ * WARNING: the sticky is not the sidebar's. That column has `overflow-y: auto`, so a long table of
+ *   contents scrolls INSIDE it and would carry the switch away; this second sticky pins it to the
+ *   top of that scroller.
+ * The two glyphs are MASKS, not background images: a mask takes its colour from `currentColor`, so
+ * one pair of shapes serves both modes and the fill is `--highlight` -- the blue of the page's
+ * accent on white, the gold on a dark ground. Quarto's are background-images whose fill is baked in
+ * at compile time, which is why they can only ever be grey.                                      */
+.txtheme-toggle {
+  display:      block;
+  width:        1.6rem;
+  height:       1.6rem;
+  margin:       0 0 0.9rem auto;
+  color:        var(--highlight, currentColor);
+  cursor:       pointer;
+  position:     sticky;
+  top:          0;
+  z-index:      2;
+}
+.txtheme-toggle--floating { position: fixed; top: 1rem; right: 1rem; margin: 0; }
+.txtheme-toggle:hover     { opacity: 0.75; }
+.txtheme-toggle .bi       { display: block; width: 100%; height: 100%; }
+.txtheme-toggle .bi::before {
+  content:          "";
+  display:          block;
+  width:            100%;
+  height:           100%;
+  background-image: none;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;         mask-repeat: no-repeat;
+  -webkit-mask-size:   100% 100%;         mask-size:   100% 100%;
+}
+.txtheme-toggle:not(.alternate) .bi::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708'/%3E%3C/svg%3E"); }
+.txtheme-toggle.alternate       .bi::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278'/%3E%3C/svg%3E"); }
+
+/* Its tooltip, the way webexercises does its button labels: a string in the cascade, so a
+ * translation is a `:lang()` rule and not a branch in a script.                                  */
+:root         { --txtheme-toggle-title: "Light and dark mode"; }
+:root:lang(fr) { --txtheme-toggle-title: "Mode clair et mode sombre"; }

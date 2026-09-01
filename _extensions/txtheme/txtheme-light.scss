@@ -15,6 +15,9 @@ $border-color: #DAD9D3;
 $link-color: #1B7EC2;
 $link-hover-color: #0069A7;
 $code-color: #A54A14;
+$code-bg: rgba(165,74,20,0.2);
+$code-block-bg: #F4F4EF;
+$code-padding: 3px 5px;
 
 /*-- scss:rules --*/
 :root { color-scheme: light; --highlight: #1B7EC2; }

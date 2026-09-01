@@ -16,6 +16,13 @@
 #   the annotations decide the mode in their own cascade -- so `css:` is where they belong. A
 #   `.scss` named in a theme list must also declare a layer boundary, which plain typography has no
 #   use for.
+# WARNING: the format ships TWO scripts, and their slots are not interchangeable.
+#   `txtheme-scheme.html` DECIDES the mode, and is `include-before-body` because Quarto's own scheme
+#   script sits first after `<body>`: ours runs there, before a line is painted. `txtheme-toggle.html`
+#   MOVES the switch into the table-of-contents column, and is `include-after-body` because that
+#   element is created by Quarto's own after-body handler and appended to `<body>`. Both have to be
+#   scripts: no stylesheet can re-parent a node, and no filter sees a node that does not exist at
+#   render time. Swap either slot and the theme flashes, or the switch is never found.
 title: txtheme
 author: Brice Nocenti
 version: 0.1.0
@@ -32,3 +39,7 @@ contributes:
       css:
         - txtheme-prose.css
         - txtheme-annotations.css
+      include-before-body:
+        - txtheme-scheme.html
+      include-after-body:
+        - txtheme-toggle.html

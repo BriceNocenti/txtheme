@@ -92,4 +92,6 @@ Adding a colour is one row. Every reference between grids is a foreign key, chec
 
 The colour maths the palette was designed with is exported and usable on its own — `oklch_hex()`, `hex_oklch()`, `max_chroma()`, `oklch_ramp()`, `oklch_ladder()`, `contrast()` and `apca()`. It is base R, and so is the whole package: **txtheme has no `Imports` at all**, because pkgdown reads a shipped file rather than loading the namespace, so on a website build the package only has to install.
 
+`screenshot()` is the other end of the same work: it opens a rendered page in a headless Chromium and writes a PNG of **one element**, once per light mode and once per dark, so a colour is judged on the page rather than on a stylesheet. It needs `chromote` and a Chromium-based browser, both `Suggests`; nothing runs unless it is called.
+
 See `dev/design.md` for the design, what each consumer can actually read, and how the palette was chosen.

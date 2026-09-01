@@ -11,10 +11,11 @@ A colour is decided once, in one declared grid (\code{R/aaa-palette.R}), and eve
 document through the bundled extension, and the editor through a ready \code{textMateRules} block.
 }
 \details{
-The exported functions are of two kinds: \code{\link[=build_theme]{build_theme()}}, \code{\link[=txtheme_file]{txtheme_file()}} and \code{\link[=use_brand]{use_brand()}} drive
-the framework; \code{\link[=oklch_hex]{oklch_hex()}}, \code{\link[=hex_oklch]{hex_oklch()}}, \code{\link[=max_chroma]{max_chroma()}}, \code{\link[=oklch_ramp]{oklch_ramp()}}, \code{\link[=oklch_ladder]{oklch_ladder()}},
-\code{\link[=apca]{apca()}} and \code{\link[=contrast]{contrast()}} are the colour maths the palette was designed with, base R only, usable
-anywhere.
+The exported functions are of three kinds: \code{\link[=build_theme]{build_theme()}}, \code{\link[=txtheme_file]{txtheme_file()}} and \code{\link[=use_brand]{use_brand()}}
+drive the framework; \code{\link[=oklch_hex]{oklch_hex()}}, \code{\link[=hex_oklch]{hex_oklch()}}, \code{\link[=max_chroma]{max_chroma()}}, \code{\link[=oklch_ramp]{oklch_ramp()}},
+\code{\link[=oklch_ladder]{oklch_ladder()}}, \code{\link[=apca]{apca()}} and \code{\link[=contrast]{contrast()}} are the colour maths the palette was designed with,
+base R only, usable anywhere; and \code{\link[=screenshot]{screenshot()}} shows what a browser did with all of it, one
+element at a time, in both modes.
 }
 \seealso{
 Useful links:

@@ -212,13 +212,24 @@ emit_highlight_scss <- function(mode = "dark") {
 
 # Quarto compiles bootstrap PROPERLY -- from Sass variables, not from a rules layer -- so the chrome
 # is `$body-bg` and friends and there is no `-rgb` trap here: bootstrap derives every twin itself.
+#
+# WARNING: EVERY slot carrying a `sass_var` is emitted here, not only the chrome ones, and the code
+#   ground is why. Quarto paints a highlighted block on `div.sourceCode` and makes `pre.sourceCode`
+#   TRANSPARENT (0,1,1 against our bare `pre`), and inline code on `p code:not(.sourceCode)` (0,1,2
+#   against our `:not(pre) > code`) -- both from `$gray-200`, the SAME literal in both modes. A
+#   rules layer therefore reached the output blocks and nothing else, and every input block stayed
+#   pale grey on a dark page. The variable is the only place a theme can win that without a
+#   specificity war, so a slot may paint in a rule AND state its Sass variable.
 emit_quarto_scss <- function(mode = "dark") {
   defaults <- character(0)
-  for (s in tx_where(TX_SLOTS, "emit", "chrome")) {
+  for (s in TX_SLOTS) {
     if (tx_empty(s$sass_var)) next
     v <- tx_value(s, mode)
     if (!is.na(v)) defaults <- c(defaults, sprintf("%s: %s;", s$sass_var, v))
   }
+  # Not a colour, so not a slot: the padding Quarto gives inline code, matched to the pill's
+  # own so the two rules cannot disagree about the shape of the same element.
+  defaults <- c(defaults, "$code-padding: 3px 5px;")
   css_vars <- tx_chrome_css_vars(mode)
   rules <- tx_drop_empty(c(
     sprintf(":root { color-scheme: %s;%s }", mode,

@@ -1,0 +1,60 @@
+<!--
+PURPOSE: open a page in the reader's own light/dark mode, and remember the mode they chose.
+ROLE: hand-written, like _extension.yml beside it. Named as `include-before-body`, so it ships with
+  the format and a document says nothing.
+KEY CONSTRAINTS:
+  - It CALLS Quarto's own `window.quartoToggleColorScheme()` and never swaps a stylesheet itself,
+    the way txtheme-toggle.html moves Quarto's switch instead of building one.
+  - It is `include-before-body`, and that is the whole point: Quarto's own scheme script is the
+    first thing after `<body>`, so ours runs before the browser has painted a line. From
+    after-body -- where the switch is moved -- a page owed the dark mode would flash light first.
+  - The mode is stored under ONE key, with no page name in it. webex.js indexes an answer by
+    `document.title`, because an answer belongs to its question; a theme belongs to the PERSON, so
+    a choice made in one séance has to be found again by the next.
+WARNING: on file:// the behaviour of localStorage is unspecified -- Chrome and Edge share one area
+  for every local page, Firefox one PER DIRECTORY, Safari refuses. Hence the probe, and hence the
+  fallback: where nothing can be stored, the system preference applies at every opening, which is
+  still better than the light mode Quarto pins on a local file.
+See: inst/prose/prose.scss, section "the light/dark switch"; txtheme-toggle.html.
+-->
+<script>
+  (function () {
+    var KEY = "txtheme.scheme";
+
+    function store() {
+      try {
+        localStorage.setItem(KEY + ".probe", "1");
+        localStorage.removeItem(KEY + ".probe");
+        return localStorage;
+      } catch (e) { return null; }
+    }
+
+    /* `body.quarto-dark` is the public hook -- the one tabxplor's stylesheet and txtheme's own
+       annotations read -- never an internal of Quarto's script. */
+    function isDark() { return document.body.classList.contains("quarto-dark"); }
+
+    function apply() {
+      if (typeof window.quartoToggleColorScheme !== "function") return false;
+
+      var box = store(), want = box && box.getItem(KEY);
+      if (want !== "dark" && want !== "light")
+        want = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+      /* Wrapping the function rather than listening on the switch: the switch does not exist yet,
+         there may be more than one, and Quarto builds its own late. Every route through the
+         toggle is caught here, once. */
+      var toggle = window.quartoToggleColorScheme;
+      window.quartoToggleColorScheme = function () {
+        toggle.apply(this, arguments);
+        if (box) { try { box.setItem(KEY, isDark() ? "dark" : "light"); } catch (e) {} }
+      };
+
+      if ((want === "dark") !== isDark()) window.quartoToggleColorScheme();
+      return true;
+    }
+
+    /* Ours may be emitted before Quarto's in the template's single include loop; then the function
+       is not there yet and the decision waits for the parsed document. */
+    if (!apply()) window.document.addEventListener("DOMContentLoaded", apply);
+  })();
+</script>

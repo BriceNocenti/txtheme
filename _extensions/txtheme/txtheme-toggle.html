@@ -1,0 +1,40 @@
+<!--
+PURPOSE: put Quarto's light/dark switch where a reader can find it, and keep it there.
+ROLE: hand-written, like _extension.yml beside it. Named as `include-after-body`, so it ships with
+  the format and a document says nothing.
+KEY CONSTRAINTS:
+  - It MOVES Quarto's own element and never builds a second one. The click handler, the `alternate`
+    class and the whole stylesheet-swapping machinery stay Quarto's; only the node's home changes.
+  - It runs on DOMContentLoaded AND on load, and is idempotent. Quarto creates the switch in its own
+    DOMContentLoaded handler, and nothing says whose handler runs first; `load` is the pass that
+    cannot be too early.
+WARNING: `top-right` is removed on purpose. Quarto styles that class at (0,3,2) -- the two glyph
+  rules in _bootstrap-rules.scss -- which would beat every rule in the prose stylesheet. Dropping it
+  is what lets txtheme style the switch at all.
+See: inst/prose/prose.scss, section "the light/dark switch".
+-->
+<script>
+  (function () {
+    function place() {
+      var t = document.querySelector(".quarto-color-scheme-toggle");
+      if (t === null || t.classList.contains("txtheme-toggle")) return;
+      /* `top-right` is the FLOATING switch, the one a standalone document gets. A book or a website
+         puts its own in the navbar, where it is already visible and already placed: leave it. */
+      if (!t.classList.contains("top-right")) return;
+      t.classList.add("txtheme-toggle");
+      t.classList.remove("top-right");
+
+      var label = window.getComputedStyle(document.documentElement)
+        .getPropertyValue("--txtheme-toggle-title").trim().replace(/^"|"$/g, "");
+      if (label) { t.setAttribute("title", label); t.setAttribute("aria-label", label); }
+
+      /* The head of the table-of-contents column: sticky, and on the reader's own right margin.
+         Without that column -- toc: false, or a narrow screen -- it floats instead. */
+      var side = document.getElementById("quarto-margin-sidebar");
+      if (side) { side.insertBefore(t, side.firstChild); }
+      else      { t.classList.add("txtheme-toggle--floating"); }
+    }
+    window.document.addEventListener("DOMContentLoaded", place);
+    window.addEventListener("load", place);
+  })();
+</script>

@@ -33,6 +33,11 @@ color:
     concept: "#b87bf5"
     terrain: "#d8714c"
     pertinent: "#05ae30"
+    fig-rouge: "#F4524B"
+    fig-violet: "#9E7ED7"
+    fig-orange: "#D87322"
+    fig-bleu: "#3798E6"
+    fig-vert: "#58A859"
     preciser: "#ff8700"
     non: "#e61301"
   background:

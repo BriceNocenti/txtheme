@@ -88,3 +88,14 @@
   text-decoration-style:     double !important;
   text-underline-offset:     1px !important;
 }
+
+/* -- the five figure-legend hues ------------------------------------------------------------------
+ * `[les flèches violettes]{.fig-violet}`. NOT an annotation: an annotation says what a passage IS,
+ * these say WHICH MARK ON THE DRAWING the words name, so the hue is the figure's own and the class
+ * is named after the colour on purpose -- here the colour IS the meaning. The courses wrote them as
+ * colorize(x, "#9575cd"), a literal frozen into the prose and unreadable on a dark page.          */
+.fig-rouge  { color: var(--fig-rouge)  !important; font-weight: bold; }
+.fig-violet { color: var(--fig-violet) !important; font-weight: bold; }
+.fig-orange { color: var(--fig-orange) !important; font-weight: bold; }
+.fig-bleu   { color: var(--fig-bleu)   !important; font-weight: bold; }
+.fig-vert   { color: var(--fig-vert)   !important; font-weight: bold; }

@@ -91,15 +91,18 @@ test_that("every bootstrap property named is one bootstrap emits", {
   expect_length(txtheme:::BS_DARK_VARS, 52L)
 })
 
-test_that("a slot may be painted by a different colour per mode, and only `bold` is", {
-  # The one row `colour_light` exists for: on white, bold is loud enough as bold and stays the
-  # emphasis black; on a dark page bold reads weakly, so it takes the gold. A colour that merely
-  # has two VALUES needs nothing here -- that is TX_PALETTE's own light column.
+test_that("a slot may be painted by a different colour per mode, and two are", {
+  # `colour_light` says a slot CHANGES COLOUR with the mode, which is not the same thing as a colour
+  # having two values -- that is TX_PALETTE's own light column. Two rows need it, and both for the
+  # same reason: on white, bold is loud enough as bold and the accent blue carries the page, while
+  # on a dark ground bold reads weakly and the blue chrome recedes, so both take the gold.
   alt <- vapply(txtheme:::TX_SLOTS, function(s)
     if (txtheme:::tx_empty(s$colour_light)) NA_character_ else s$colour_light, character(1))
-  expect_identical(names(alt)[!is.na(alt)], "bold")
+  expect_setequal(names(alt)[!is.na(alt)], c("bold", "highlight"))
   expect_identical(txtheme:::tx_slot_colour(txtheme:::TX_SLOTS$bold, "dark"),  "gold")
   expect_identical(txtheme:::tx_slot_colour(txtheme:::TX_SLOTS$bold, "light"), "emphasis")
+  expect_identical(txtheme:::tx_slot_colour(txtheme:::TX_SLOTS$highlight, "dark"),  "gold")
+  expect_identical(txtheme:::tx_slot_colour(txtheme:::TX_SLOTS$highlight, "light"), "accent")
 })
 
 test_that("a colour with one value is mode-independent, and reads that way in every mode", {
