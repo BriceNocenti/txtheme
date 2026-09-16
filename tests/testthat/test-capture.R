@@ -110,3 +110,25 @@ test_that("expand, scale et le mode font ce qu'ils disent", {
   expect_gt(part_de(d, CYAN), 0.99)
   expect_lt(part_de(d, MAGENTA), 0.01)
 })
+
+# measure_contrast() is only worth something if it composites: a translucent ground over another
+# one is exactly what a nested box is, and reading the element's own background alone would report
+# a transparent grey as white.
+test_that("measure_contrast() composites translucent grounds and resolves any colour syntax", {
+  skip_sans_navigateur()
+  f <- tempfile(fileext = ".html")
+  on.exit(unlink(f), add = TRUE)
+  writeLines(c(
+    "<!doctype html><html><head><meta charset='utf-8'></head>",
+    "<body style='margin:0;background:#ffffff'>",
+    "<div style='background:rgba(0,0,0,0.5)'>",
+    "  <p id='gris' style='color:oklch(1 0 0)'>blanc sur gris</p></div>",
+    "</body></html>"), f)
+  got <- suppressMessages(capture.output(
+    r <- measure_contrast(f, "#gris", mode = "light", delay = 0)))
+  # half-black over white: 127.5, which the canvas's 8-bit alpha rounds either way
+  expect_true(r$background %in% c("#7F7F7F", "#808080"))
+  expect_identical(r$text, "#FFFFFF")
+  expect_equal(r$wcag, round(contrast("#FFFFFF", r$background), 2))
+  expect_error(measure_contrast(f, "#absent", mode = "light", delay = 0), "nothing matches")
+})

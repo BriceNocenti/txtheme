@@ -74,12 +74,12 @@ h6            { font-size: 0.875rem; font-style: italic; }
  * WARNING: `opacity` is not a detail here. Quarto draws h3 to h6 at 0.9, which washes out exactly
  *   the rungs whose chroma the OKLCH ladder had the least room for -- the six colours are chosen
  *   against the page, and a translucent heading is not the colour that was measured.             */
-h1            { margin-top: 4rem; }
-h2            { margin-top: 3rem; }
-h3            { margin-top: 2.25rem; }
-h4            { margin-top: 1.75rem; }
-h5            { margin-top: 1.25rem; }
-h6            { margin-top: 1rem; }
+h1            { margin-top: 8rem; }
+h2            { margin-top: 6rem; }
+h3            { margin-top: 4.5rem; }
+h4            { margin-top: 3.5rem; }
+h5            { margin-top: 2.5rem; }
+h6            { margin-top: 2rem; }
 h3, h4, h5, h6 { opacity: 1; }
 
 /* The page's own title needs room above it: it is the first thing on the page, and it read as glued
@@ -92,6 +92,106 @@ h3, h4, h5, h6 { opacity: 1; }
 .footnote     { font-size: 80%; line-height: 1.2; padding-left: 6px; padding-bottom: 8px; }
 .compact-list p { margin-top: -4px; margin-bottom: -2px; }
 
+/* -- an aside that borrows an annotation colour --------------------------------------------------
+ * `::: {.encadre couleur="concept"}` in a course gives its box the colour of an annotation: the
+ * border AND the title band. The webexercises filter lifts the word onto the frame as
+ * `data-couleur` -- a top-level `.webex-box`, or a `.webex-inset` nested in one -- and webex.css
+ * paints both from `--webex-accent`; the palette answers the name here, since the twelve colours
+ * are this package's.
+ * WARNING: never the annotation class on the box. `.concept` would colour its TEXT too, and an
+ *   aside is not an annotation: it holds several sentences, which no annotation class is made for.
+ * DESIGN: the band carries INVERSE ink -- white on a light page -- and the annotation hues sit at
+ *   medium lightness by construction, so white on them measures 2.0 to 3.3:1. In LIGHT mode only,
+ *   the accent is darkened towards black in OKLCH (hue kept, lightness and chroma scaled) by the
+ *   smallest round share that clears 4.5:1 for every hue; the yellow needs more, and says so. Dark
+ *   mode keeps the palette as it is: near-black ink on it measures 4.6 to 7.6:1.
+ *   `terrain` is kept UNDARKENED on purpose (3.3:1): its band only ever says « Variables et
+ *   paramètres » or « Extrait du questionnaire », read by its colour before its words, and the
+ *   darkened orange read as brown -- a different colour from the `.terrain` of the prose.
+ *   `--tx-band-light` is the switch (1 on a light page, 0 on a dark one), so a colour's shade is
+ *   written once and never repeated under a dark selector.                                        */
+:root                                       { --tx-band-light: 1; }
+html[data-bs-theme="dark"], body.quarto-dark,
+[data-theme="dark"], html.dark              { --tx-band-light: 0; }
+
+:is(.webex-box, .webex-inset)[data-couleur] {
+  --webex-accent: color-mix(in oklch, var(--bord, currentColor),
+                            black calc(var(--shade, 24%) * var(--tx-band-light, 1)));
+}
+:is(.webex-box, .webex-inset)[data-couleur="prob"]        { --bord: var(--problematique); }
+:is(.webex-box, .webex-inset)[data-couleur="resultat"]    { --bord: var(--resultat); --shade: 28%; }
+:is(.webex-box, .webex-inset)[data-couleur="structure"]   { --bord: var(--structure); }
+:is(.webex-box, .webex-inset)[data-couleur="reference"]   { --bord: var(--reference); }
+:is(.webex-box, .webex-inset)[data-couleur="concept"]     { --bord: var(--concept); }
+:is(.webex-box, .webex-inset)[data-couleur="terrain"]     { --bord: var(--terrain); --shade: 0%; }
+:is(.webex-box, .webex-inset)[data-couleur="reflexivite"] { --bord: var(--reflexivite); }
+:is(.webex-box, .webex-inset)[data-couleur="enjeu"]       { --bord: var(--enjeu); }
+:is(.webex-box, .webex-inset)[data-couleur="pertinent"]   { --bord: var(--pertinent); }
+:is(.webex-box, .webex-inset)[data-couleur="preciser"]    { --bord: var(--preciser); }
+:is(.webex-box, .webex-inset)[data-couleur="non"]         { --bord: var(--non); }
+:is(.webex-box, .webex-inset)[data-couleur="comment"]     { --bord: var(--comment-text); }
+
+/* -- an extract from the questionnaire -------------------------------------------------------------
+ * A course shows two kinds of table, and a student must never confuse them: the CROSSTAB, which is
+ * a result, and the QUESTIONNAIRE EXTRACT, which is the question that produced it. tabxplor owns
+ * the first -- condensed face, ruled top and bottom, coloured cells. So this one is deliberately
+ * the opposite: the body face, no frame, no vertical rules, zebra rows instead of rules, and the
+ * two answer boxes greyed out because they are there to be READ, not ticked.
+ * Colours come from Bootstrap's own tokens, so the extract follows the light/dark switch with no
+ * rule of its own; `--highlight` under the header is what ties it to the exercise title above.  */
+/* Pandoc rebuilds the table and invents equal column widths; Quarto then adds its own table
+ * classes. Both are undone here, so the extract keeps the shape its content asks for.          */
+.questionnaire col   { width: auto !important; }
+.questionnaire table {
+  width:            fit-content;
+  max-width:        100%;
+  margin:           0.9rem 0 1.4rem;
+  border-collapse:  collapse;
+  font-size:        0.92rem;
+  line-height:      1.35;
+}
+.questionnaire th {
+  font-weight:      normal;
+  font-size:        0.78rem;
+  letter-spacing:   0.03em;
+  opacity:          0.7;
+  text-align:       left;
+  padding:          0 0.9rem 0.3rem 0;
+  border:           0;
+  border-bottom:    2px solid var(--highlight, currentColor);
+}
+.questionnaire td {
+  border:           0;
+  padding:          0.35rem 0.9rem 0.35rem 0;
+  vertical-align:   baseline;
+}
+.questionnaire :is(th, td):first-child { padding-inline-start: 0.5rem; }
+
+/* -- zebra rows: a markdown table, and the questionnaire extract ----------------------------------
+ * A pipe table came out as a few lines of text with hairlines, and did not read as a table. Every
+ * other body row takes a MID GREY at low alpha -- never a colour -- so it darkens a light page and
+ * lightens a dark one, and inside a grey box (an extract always is one) the plain row matches the
+ * box and the striped one sits one step further: an elevation, not a new hue.
+ * WARNING: tabxplor tables are excluded by class. Their cells carry the over/under-representation
+ *   colours, and a stripe under them would be read as a result.
+ * Bootstrap paints a `.table` cell with the page ground (`--bs-table-bg`), which would punch a white
+ * hole in a grey box: it is made transparent, and the stripe goes through Bootstrap's own layer.  */
+:root                                                  { --tx-zebra: rgba(127, 127, 127, 0.09); }
+html[data-bs-theme="dark"], body.quarto-dark,
+[data-theme="dark"], html.dark                         { --tx-zebra: rgba(127, 127, 127, 0.14); }
+main table.table:not(.tabxplor-tab)                    { --bs-table-bg: transparent; }
+main table.table:not(.tabxplor-tab) > tbody > tr > *   { border-bottom-width: 0; }
+main table.table:not(.tabxplor-tab) > tbody > tr:last-child > * { border-bottom-width: 1px; }
+main table.table:not(.tabxplor-tab) > tbody > tr:nth-child(even) > *,
+.questionnaire tbody tr:nth-child(even) td             { background-color: var(--tx-zebra); }
+main table.table:not(.tabxplor-tab) > tbody > tr:nth-child(even) > * { --bs-table-bg-type: transparent; }
+
+/* The variable name is the key a student types, so it stays legible but never leads the eye. */
+.questionnaire .q-var   { white-space: nowrap; opacity: 0.85; }
+.questionnaire .q-item  { padding-right: 1.6rem; }
+.questionnaire .q-case  { width: 3.4em; text-align: center; padding-right: 0.4rem; }
+.questionnaire .q-case input { pointer-events: none; }
+
 /* -- the exercise title ----------------------------------------------------------------------------
  * Quarto's own `::: {#exr-id}` emits `<div class="theorem exercise">` with a
  * `<span class="theorem-title">` -- it KEEPS the class bookdown's `{.exercise}` had, so this is the
@@ -102,7 +202,9 @@ h3, h4, h5, h6 { opacity: 1; }
  * `display: block` puts the statement on its own line. Quarto's crossref normalize PREPENDS the
  * title span into the first paragraph of the theorem's body, so the two shared a line and read as
  * one sentence; the AST offers no seam to cut, and hoisting the body out of the div -- tried once
- * -- leaves a non-breaking space behind every title.                                             */
+ * -- leaves a non-breaking space behind every title.
+ * Inside a `.webex-box`, webex.css replaces this underline with the title band, by a more specific
+ * rule: what is kept here is the look of an exercise on a page without webexercises.             */
 .exercise .theorem-title {
   display:                   block;
   width:                     fit-content;   /* the rule hugs the title, it is not a page-wide bar */

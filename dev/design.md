@@ -255,6 +255,8 @@ Everything above decides a colour by arithmetic. `screenshot()` (`R/capture.R`) 
 
 **Why here.** The mode is this package's business — `body.quarto-dark` on a Quarto page, `data-bs-theme` on a pkgdown one, `prefers-color-scheme` under both — so the one file that has to know all three conventions belongs beside them. It serves every consumer: a course page, a pkgdown site, `dev/preview_theme.html`. `chromote` is a `Suggests`; nothing runs unless the function is called, and §4's install-in-seconds arithmetic is untouched.
 
+**`measure_contrast()` (`R/measure.R`) is its measuring twin.** Same session, same mode forcing, same actions; instead of an image it reads the text colour and the ground of the first match **as painted** and hands them to `contrast()` and `apca()`. A computed style is no hex — a band is `color-mix(in oklch, …)`, a nested box a translucent grey over another — so each colour is painted on a 1 × 1 canvas and read back as sRGB, and the ground is composited down the ancestor chain. ⚠ Only `background-color` is seen: an image, a gradient, an inset `box-shadow` or an `opacity` is not.
+
 **Four things it refuses to do quietly**, because each would return a believable picture of the wrong thing: a selector that matches nothing stops; a selector all of whose matches an ancestor **clips away** stops, naming the clip and how to open it; a page that ends up in the mode that was *not* asked for stops, after one attempt at Quarto's own `quartoToggleColorScheme()`; and a `click:` or a `fill:` action whose selector matches nothing stops rather than doing nothing.
 
 **Four facts about the browser, all measured on Chromium 151.**
