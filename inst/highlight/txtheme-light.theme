@@ -163,7 +163,7 @@
             "underline": false
         },
         "Other": {
-            "text-color": "#1B7EC2",
+            "text-color": "#891B3D",
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -184,7 +184,7 @@
             "underline": false
         },
         "SpecialChar": {
-            "text-color": "#503894",
+            "text-color": "#891B3D",
             "background-color": null,
             "bold": false,
             "italic": false,

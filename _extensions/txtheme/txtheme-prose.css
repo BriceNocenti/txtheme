@@ -140,6 +140,16 @@ h3, h4, h5, h6 { opacity: 1; }
 .footnote     { font-size: 80%; line-height: 1.2; padding-left: 6px; padding-bottom: 8px; }
 .compact-list p { margin-top: -4px; margin-bottom: -2px; }
 
+/* A « Champ / Source » note written right under a table belongs to it: the M1 courses write it in
+ * markdown, not in `subtext =`. The table's own air -- the 1.2em bottom margin tabxplor gives its
+ * `.tx-scrollbox`, so that two tables never touch -- would detach the note, and so would the top
+ * margin of the note's first paragraph. Both go, there and only there: a table with no note keeps
+ * its air. The air is not lost but MOVED under the note (1.2rem, the table's own 1.2em at body
+ * size), so that the table and its note read as one block, well apart from what follows.        */
+.cell:has(+ .footnote) .tx-scrollbox { margin-bottom: 0.3em; }
+.cell + .footnote > p:first-child     { margin-top: 0; }
+.cell + .footnote                     { margin-bottom: 1.2rem; }
+
 /* -- an aside that borrows an annotation colour --------------------------------------------------
  * `::: {.encadre couleur="concept"}` in a course gives its box the colour of an annotation: the
  * border AND the title band. The webexercises filter lifts the word onto the frame as
@@ -166,7 +176,9 @@ html[data-bs-theme="dark"], body.quarto-dark,
   --webex-accent: color-mix(in oklch, var(--bord, currentColor),
                             black calc(var(--shade, 24%) * var(--tx-band-light, 1)));
 }
-:is(.webex-box, .webex-inset)[data-couleur="prob"]        { --bord: var(--problematique); }
+:is(.webex-box, .webex-inset):is([data-couleur="prob"], [data-couleur="problematique"]) {
+  --bord: var(--problematique);
+}
 :is(.webex-box, .webex-inset)[data-couleur="resultat"]    { --bord: var(--resultat); --shade: 28%; }
 :is(.webex-box, .webex-inset)[data-couleur="structure"]   { --bord: var(--structure); }
 :is(.webex-box, .webex-inset)[data-couleur="reference"]   { --bord: var(--reference); }
@@ -233,6 +245,15 @@ main table.table:not(.tabxplor-tab) > tbody > tr:last-child > * { border-bottom-
 main table.table:not(.tabxplor-tab) > tbody > tr:nth-child(even) > *,
 .questionnaire tbody tr:nth-child(even) td             { background-color: var(--tx-zebra); }
 main table.table:not(.tabxplor-tab) > tbody > tr:nth-child(even) > * { --bs-table-bg-type: transparent; }
+
+/* -- bold inside a tabxplor table: weight, not hue ------------------------------------------------
+ * The dark theme paints prose bold in the highlight gold (the palette's `bold` slot). A tabxplor
+ * legend bolds its "Champ :" / "Source :" labels, and in gold they read as a result or a warning.
+ * Inside a table, bold keeps the colour of the text around it -- in either mode, hence here.
+ * WARNING: `:is(table, div)` is load-bearing. It lifts the rule to (0,1,2), above the pkgdown
+ *   `[data-bs-theme=dark] strong` (0,1,1) that it would otherwise tie, and lose on source order.  */
+:is(table, div).tabxplor-tab :is(strong, b),
+.tabxplor-caption :is(strong, b)                        { color: inherit; }
 
 /* The variable name is the key a student types, so it stays legible but never leads the eye. */
 .questionnaire .q-var   { white-space: nowrap; opacity: 0.85; }

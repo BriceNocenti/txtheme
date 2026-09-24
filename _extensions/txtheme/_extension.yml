@@ -23,6 +23,11 @@
 #   element is created by Quarto's own after-body handler and appended to `<body>`. Both have to be
 #   scripts: no stylesheet can re-parent a node, and no filter sees a node that does not exist at
 #   render time. Swap either slot and the theme flashes, or the switch is never found.
+# WARNING: the format's two filters do not style anything. `renvoi.lua` writes a
+#   `[texte]{.renvoi seance=1 ref=sec-x}` span as « texte (séance 1) », or as a live « (Section 1.1) »
+#   in a book whose metadata says `livre: true`; `liens.lua` makes every http(s) link open in a new
+#   tab, which Quarto's own option cannot do on a page opened offline (see each file). They ride here
+#   because this format is the one both a session page and the course book use.
 title: txtheme
 author: Brice Nocenti
 version: 0.1.0
@@ -43,3 +48,6 @@ contributes:
         - txtheme-scheme.html
       include-after-body:
         - txtheme-toggle.html
+      filters:
+        - renvoi.lua
+        - liens.lua

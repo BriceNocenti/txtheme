@@ -28,6 +28,7 @@ The design is entirely determined by this table, so it is the first thing to che
 | Quarto 1.10               | Sass variables, and `brand:` ✓         | `syntax-highlighting: {light, dark}` ✓        |
 | bookdown `html_document2` | `theme:` (bootswatch) or raw `css:`    | pandoc `highlight:` — a name **or a `.theme` path** ✓ |
 | Positron / VS Code        | theme JSON                             | the same JSON                                |
+| RStudio                   | a `.rstheme`: plain CSS on Ace classes | the same file                                |
 | tabxplor tables           | —                                      | —                                            |
 
 | consumer                  | extra CSS                                     | light/dark                                  |
@@ -36,6 +37,7 @@ The design is entirely determined by this table, so it is the first thing to che
 | Quarto 1.10               | `theme: [brand, extra.scss]`, or an extension | built in → two stylesheets, swapped ✓       |
 | bookdown `html_document2` | `css:`                                        | **none**                                    |
 | Positron / VS Code        | —                                             | editor setting                              |
+| RStudio                   | —                                             | one theme per file, `rs-theme-is-dark`      |
 | tabxplor tables           | `tab_css()`                                   | **already follows both** ✓                  |
 
 Four consequences drive everything below.
@@ -63,8 +65,8 @@ Layer D is the proof that this works: `tab_css(theme = "auto")` writes its casca
 
 ```text
                     R/aaa-palette.R
-        TX_PALETTE · TX_SLOTS · TX_TOKENS · TX_BRAND
-              (four grids, one fact per row)
+   TX_PALETTE · TX_SLOTS · TX_TOKENS · TX_BRAND · TX_ACE (+ TX_ANSI)
+              (one grid per namespace, one fact per row)
                            │
                   R/build-theme.R        ← the ONE generator, run by hand
                            │
@@ -73,6 +75,8 @@ Layer D is the proof that this works: `tab_css(theme = "auto")` writes its casca
 extra.scss  annotations  txtheme-dark  txtheme-dark  _brand.yml  token-
 (pkgdown)   .css (opt-in) .scss (pkgdown/  .scss+.theme  (Quarto)  colors.json
                            bookdown)     (Quarto)                 (editor)
+                                                                  + txtheme.rstheme
+                                                                    (RStudio)
 ```
 
 Read it as one rule: **nothing downstream is edited by hand**, and a file's first line says which side of that line it is on. The only hand-written artefacts are `inst/prose/annotations.scss` (typography no palette can express), the `.at` JS shim, the `in-header.html` override and `_extension.yml`.
@@ -97,6 +101,20 @@ Three costs would be paid forever for merging: two exclusion lists that every ne
 
 So: they stay separate and the flow is one-directional. txtheme owns the palette and *generates* the editor block; `pandoc-span-highlight` keeps the grammar and the command, and owns no colour. Revisit only if the editor side ever becomes a **published, colour-only** theme of its own — that is, if txtheme stops overriding *Starless Monokai Atom* and replaces it. Then the palette and the theme are the same artefact, and one repository is the natural home.
 
+### 5.2 RStudio — a generated `.rstheme`
+
+The students write R in RStudio, not in Positron, so the code colours they read on a course page have to be the ones their editor paints. The theme is one more output of the same grids: `TX_TOKENS` gains an `ace` column (the Ace selector a skylighting token translates to, as `tm_scope` translates it for TextMate), and `TX_ACE` holds what has no token twin — the editor's ground and markers, the rainbow parentheses, the completion popup, the terminal. A word is therefore the same colour on a page and in RStudio **by construction**; that it is also what RStudio *paints* is checked against a live RStudio by `formations_stat/dev/tools/verifier_rstudio.R`.
+
+Why this shape, and not the obvious ones:
+
+- **Plain CSS, never a `.tmTheme`.** RStudio converts a tmTheme to a `.rstheme` at import, which needs the `xml2` package on the student's machine, and the conversion loses the R names: RStudio tags them `identifier`, which no tmTheme `variable` scope reaches. A `.scss` rstheme needs `sass`. Plain CSS is read as it stands by every RStudio since 1.2.
+- **The two header lines come first.** RStudio reads `rs-theme-name` and `rs-theme-is-dark` by regex. ⚠ Without the second, a dark theme is taken for a **light** one — dark editor, light panes and menus — with only a line in RStudio's log.
+- **Only the classes RStudio promises to keep.** Posit guarantees `ace_*`, `rstheme_*` and the terminal's `terminal` / `xterm*`; `.rstudio-themes-flat` vanished in 2022.02 and broke every theme that leaned on it. `.onLoad()` refuses any other class, bar the three every bundled theme still carries (`RSTUDIO_CLASSES`).
+- ⚠ **The editor ground must be an unscoped `.ace_editor` rule.** RStudio samples the ground and the ink of its whole interface off a bare `div.ace_editor` it plants under `<body>`.
+- ⚠ **A rainbow parenthesis is `body .ace_paren.ace_paren_color_N`.** RStudio's own defaults are `.editor_dark .ace_paren_color_N`; a bare class loses to them and the theme's colours never show.
+
+Three things no theme can reach, and which a course must therefore never promise: an **argument name** (RStudio has no token for it — `pct` is an `identifier` like any name, so it stays the ink while a page paints it orange); **`library(`, `source(`, `stop(`** and a few others, which RStudio calls keywords (pink) where pandoc calls them functions (blue); and the **text colour of an error, a warning or a message** in the console, fixed by RStudio under obfuscated classes. RStudio also colours every operator alike (`keyword.operator`), which is one reason the page's operators went pink too (§7.1).
+
 ## 6. What you write, per project
 
 See the README. It is three lines for pkgdown, one for Quarto, and one for bookdown, which is the whole point of the framework.
@@ -114,6 +132,7 @@ See the README. It is three lines for pkgdown, one for Quarto, and one for bookd
 | `inst/brand/_brand.yml`                           | Quarto, auto-discovered at a project root               |
 | `inst/brand/_brand-dark.yml`                      | anything that cannot take `{light:, dark:}` — see below |
 | `inst/editor/token-colors.json`                   | the editor: a ready `textMateRules` block to paste      |
+| `inst/rstudio/txtheme.rstheme`                    | RStudio, through `rstudioapi::addTheme()` (§5.2)        |
 | `_extensions/txtheme/*.scss`, `*.theme`           | Quarto, through `quarto add`                            |
 
 **The validate stage is where readability is measured**, not recorded: `build_theme()` prints one APCA `|Lc|` per slot, against the ground that slot is read on. A slot knows its ground; a colour does not — which is why there is no `apca` column in `TX_PALETTE` and no `oklch` cell that is not also re-derived from its hex at load.
@@ -122,9 +141,11 @@ See the README. It is three lines for pkgdown, one for Quarto, and one for bookd
 
 ⚠ **A Quarto `color.palette` name shares a namespace with the brand roles.** An entry named after a role (`link`, `primary`, `danger`, …) is promoted to that role, in **both** modes and with no message ✓ — a palette key `link` put the dark accent blue on the light page at Lc 30. That is why the blue is called `accent`, and why `.onLoad()` refuses any such name. A role that names only one mode, by contrast, is correctly ignored in the other ✓.
 
-### 7.1 The token mapping, and its two judgement calls
+### 7.1 The token mapping, and its three judgement calls
 
-`TX_TOKENS` is the mapping between skylighting's 31 types, pkgdown's two-letter classes and TextMate scopes. Two rows are decisions rather than translations, and both carry their reasoning in the grid's `why` cell:
+`TX_TOKENS` is the mapping between skylighting's 31 types, pkgdown's two-letter classes, TextMate scopes and RStudio's Ace classes. Three rows are decisions rather than translations, and each carries its reasoning in the grid's `why` cell:
+
+⚠ **An R operator is pink, in code only.** In R, skylighting tags `<-` as Other and `|>`, `::`, `$`, `==` as SpecialChar. Other used to take the Function blue and SpecialChar the constant lavender, so the assignment arrow had the colour of a call and the pipe the colour of `TRUE` — against the course's rule that one colour means one sort of word. Both take the keyword pink now, which is the editor's `keyword.operator` and RStudio's one operator token. Both are code tokens, so the change reaches `code span.*` and never prose; an escape inside a string (`\n`, also SpecialChar) turns pink with them.
 
 ⚠ **`.op` takes the punctuation grey.** downlit tags `(`, `,`, `$` **and** `<-` all as `.op` — 317 of them on one vignette page, the commonest class by far. In the editor the brackets are punctuation grey and only `<-` is pink; pink for all of them makes every bracket shout. It is the one place the port is *deliberately* not the editor.
 
@@ -205,6 +226,19 @@ Quarto's switch is created by its own after-body script and **appended to `<body
 
 The glyphs become **masks** — `mask-image` plus `background-color: currentColor` — so one pair of shapes serves both modes and the fill is `var(--highlight)`: the accent blue on white, the gold on a dark page. A second `position: sticky`, inside the sidebar, is not redundant: that column is `overflow-y: auto`, so a long table of contents scrolls within it and would carry the switch away.
 
+### 8.3 One file, two products: a session page and the book
+
+A course session is written once and rendered two ways without editing it: **alone**, as the self-contained `.html` a class receives, and **inside a Quarto book** that gathers the sessions (`{{< include session.qmd >}}` in a chapter file). The format carries half of what that takes, the course convention the other half. Measured on formations_stat's M2S1 session 1, Quarto 1.10:
+
+- **`livre: true`** in the book's `_quarto.yml` (`metadata:`) is the one switch. `renvoi.lua` reads it to write a cross-reference to another session as « (séance 1) » on a page and as a live `@sec-…` link in the book.
+- **External links open in a new tab, by a filter** (`liens.lua`): every `http(s)://` Link gets `target="_blank" rel="noopener"`. Quarto's `link-external-newwindow` cannot do it here: its script calls a link external when its host differs from the page's, and a session opened offline (`file://`) has no host, so every link reads as internal.
+- **Quarto's conditional divs read the same key**: `::: {.content-hidden when-meta="livre"}` for what only a page needs (opening the RStudio project, installing packages), `::: {.content-visible when-meta="livre"}` for the reverse. No filter of ours is involved.
+- **The session header says `pagetitle:`, never `title:`.** An included file's YAML is merged into the chapter and **wins over the chapter file's own**: a `title` becomes a chapter heading, and the session's H1 a second chapter. `pagetitle` only sets the tab and `document.title` (the key under which webexercises stores answers).
+- **One H1, first in the body**, is the chapter in the book and, with `number-offset: [n-1]`, the numbered session « n » on a page. The book ignores the included `number-offset` and numbers chapters in its own order.
+- **A course presentation is a file of its own**, never the head of session 1: pasted into the LMS above session 1, it is the book's index.
+
+formations_stat pins the header rule in `tests/testthat/test-quarto.R`; the convention is written in its `CLAUDE.md` (« Une séance, deux éditions ») and in the `concevoir-seance` skill.
+
 ## 9. What deliberately stays outside
 
 - **tabxplor's table colours.** `tab_css()` is the single source for anything inside a `.tabxplor-tab`, in every medium, and it already follows both toolchains' dark hooks ✓. **Rule: txtheme never writes a selector containing `.tabxplor-tab`.** If a table looks wrong on a themed page, the fix belongs in tabxplor.
@@ -274,6 +308,10 @@ Everything above decides a colour by arithmetic. `screenshot()` (`R/capture.R`) 
 ---
 
 ## Appendix A — verified facts
+
+Read 2026-09-23 in RStudio's source (`rstudio/rstudio`, main): `SessionThemes.cpp` reads the name with `rs-theme-name\s*:\s*([^\*]+?)\s*(?:\*|$)` and takes a missing or invalid `rs-theme-is-dark` as light; `r_highlight_rules.js` emits `identifier` for every R name (argument names included), `identifier.support.function` for a call and `punctuation.keyword.operator` for a comma only under `highlight_r_function_calls`, one `keyword.operator` for every operator, and `keyword` for `library(`, `source(` and ten other calls; `themeStyles.css` sets the rainbow defaults on `.editor_dark .ace_paren_color_N`; `rstudioapi::convertTheme()` stops without `xml2`.
+
+Measured 2026-09-23 against a live RStudio Server 2026.09.0+174 (`rocker/rstudio:4.6.1`), by `formations_stat/dev/tools/verifier_rstudio.R`: `rstudioapi::addTheme(apply = TRUE, force = TRUE)` installs and applies the `.rstheme` with no other package; the whole UI turns dark and the editor ground is `#1f1f1f` ✓; on a 15-line script, every word paints the page's colour ✓ except the deviations of §5.2 — argument names and their `=`, `library` / `source`, brackets in pair colours, grey commas ✓; the rainbow parentheses show the theme's colours, not RStudio's defaults ✓.
 
 Measured 2026-09-01, for section 10's second pass: Chromium 151.0.7922.173, chromote 0.5.1, on the rendered course pages of `formations_stat`. Hiding the scrollbar does **not** relayout these pages — `documentElement.clientWidth` stays 1265 whether `Emulation.setScrollbarsHidden` is on or off, and a viewport widened by the missing 15 px moves no element by a single pixel: the content column is fixed-width. It is set before the page is laid out all the same, so that measure and capture can never see two different pages.
 

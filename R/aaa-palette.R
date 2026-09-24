@@ -1,14 +1,15 @@
-# PURPOSE: the four declared grids -- every colour, every place a colour is painted, every syntax
-#   token, every brand role. This is the ONLY file a colour is decided in.
+# PURPOSE: the declared grids -- every colour, every place a colour is painted, every syntax token,
+#   every brand role, every surface of the RStudio theme. This is the ONLY file a colour is decided in.
 # ROLE: the single source the generator reads. Everything under inst/ and _extensions/ is written
 #   from here by build_theme(); nothing downstream is edited by hand.
 # KEY CONSTRAINTS:
-#   - FOUR grids, split by the NAMESPACE a key belongs to: a colour name is ours, a `--bs-*`
-#     property is Bootstrap's, a skylighting token is pandoc's, a brand role is Quarto's. Folding
+#   - One grid per NAMESPACE a key belongs to: a colour name is ours, a `--bs-*` property is
+#     Bootstrap's, a skylighting token is pandoc's, a brand role is Quarto's, a selector of the RStudio
+#     theme is Ace's (TX_ACE; TX_ANSI is its terminal palette). Folding
 #     them would force some hexes (the accent blue is also the Function token and the brand primary;
 #     the gold is bold, the blockquote rule and an annotation class) to be stated more than once,
 #     which is the one thing a grid may not do.
-#   - A hex appears ONCE, in TX_PALETTE. The other three carry a foreign key to it, checked at load
+#   - A hex appears ONCE, in TX_PALETTE. Every other grid carries a foreign key to it, checked at load
 #     by R/zzz-checks.R.
 #   - `oklch` is the coordinate READ BACK off the hex, `spec` the construction the hex came from
 #     where it has one. Both are re-derived and diffed at load, so neither can record a colour it
@@ -224,41 +225,135 @@ TX_BRAND <- tx_grid(tx_tribble(
 # colour    a foreign key into TX_PALETTE
 # style     the extra declaration, in CSS. The `.theme` and editor writers read bold / italic / underline back out of it.
 # tm_scope  the TextMate scope for the editor block. NA where the editor has no token scope for it.
+# ace       the RStudio (Ace) selector list the same token paints in the `.rstheme`. NA where RStudio's R mode
+#           emits nothing that means it. The classes are those of RStudio's r_highlight_rules.js: a token type
+#           `a.b.c` becomes the classes `.ace_a.ace_b.ace_c`, so a selector here is a SUBSET of those classes and
+#           its specificity is what decides between two rows that match the same span.
 # why       filled only where the mapping is a judgement rather than a translation
 TX_TOKENS <- tx_grid(tx_tribble(
-  ~token,           ~class, ~colour,       ~style,                       ~tm_scope,                     ~why,
-  "Normal",         NA,     "ink",         NA,                           NA,                            "an editor's own foreground is a workbench colour, not a token scope, so this row reaches the .scss and the .theme but not the editor block",
-  "Alert",          "al",   "keyword",     "font-weight: bold",          "invalid.illegal",             NA,
-  "Annotation",     "an",   "comment",     NA,                           "comment",                     NA,
-  "Attribute",      "at",   "inline-code", "font-style: italic",         "variable.parameter",          "an R ARGUMENT NAME, and the one token the two highlighters disagree on. Pandoc tags `pct =` as Attribute, so Quarto colours it for free; downlit leaves it as BARE TEXT -- only the `=` beside it is tagged -- and no CSS selector reaches a bare text node. That gap is what inst/pkgdown/BS5/assets/txtheme-at.js closes, so one colour serves both toolchains",
-  "BaseN",          "bn",   "constant",    NA,                           "constant.numeric",            NA,
-  "BuiltIn",        "bu",   "accent",      NA,                           "support.function",            NA,
-  "Char",           "ch",   "string",      NA,                           "string.quoted.single",        NA,
-  "Comment",        "co",   "comment",     "font-style: italic",         "comment",                     NA,
-  "CommentVar",     "cv",   "comment",     NA,                           "comment",                     NA,
-  "Constant",       "cn",   "constant",    NA,                           "constant.language",           NA,
-  "ControlFlow",    "cf",   "keyword",     NA,                           "keyword.control",             NA,
-  "DataType",       "dt",   "datatype",    "font-style: italic",         "entity.name.type",            NA,
-  "DecVal",         "dv",   "constant",    NA,                           "constant.numeric",            NA,
-  "Documentation",  "do",   "comment",     NA,                           "comment.block.documentation", NA,
-  "Error",          "er",   "keyword",     "text-decoration: underline", "invalid",                     NA,
-  "Extension",      "ex",   "accent",      NA,                           "support.function",            NA,
-  "Float",          "fl",   "constant",    NA,                           "constant.numeric",            NA,
-  "Function",       "fu",   "accent",      NA,                           "entity.name.function",        NA,
-  "Import",         "im",   "keyword",     NA,                           "keyword.control.import",      NA,
-  "Information",    "in",   "inline-code", NA,                           "constant.other.placeholder",  NA,
-  "Keyword",        "kw",   "keyword",     NA,                           "keyword",                     NA,
-  "Operator",       "op",   "punctuation", NA,                           "punctuation",                 "downlit tags `(`, `,`, `$` AND `<-` all as `.op` -- 317 of them on one vignette page, the commonest class by far. In the editor the brackets are punctuation grey and only `<-` is pink; pink for all of them makes every bracket shout, so `.op` takes the grey and pink is left to keywords. The one place the port is DELIBERATELY not the editor",
-  "Other",          "ot",   "accent",      NA,                           "support.other",               NA,
-  "Preprocessor",   "pp",   "keyword",     NA,                           "meta.preprocessor",           NA,
-  "RegionMarker",   "re",   "comment",     NA,                           "comment",                     NA,
-  "SpecialChar",    "sc",   "constant",    NA,                           "constant.character.escape",   NA,
-  "SpecialString",  "ss",   "string",      NA,                           "string.regexp",               NA,
-  "String",         "st",   "string",      NA,                           "string",                      NA,
-  "Variable",       "va",   "ink",         NA,                           "variable",                    NA,
-  "VerbatimString", "vs",   "string",      NA,                           "string.quoted.other",         NA,
-  "Warning",        "wa",   "keyword",     NA,                           "invalid.deprecated",          NA
+  ~token,           ~class, ~colour,       ~style,                       ~tm_scope,                     ~ace,                                                                                              ~why,
+  "Normal",         NA,     "ink",         NA,                           NA,                            ".ace_identifier, .ace_support.ace_class",                                                         "an editor's own foreground is a workbench colour, not a token scope, so this row reaches the .scss and the .theme but not the editor block. In RStudio an R name is an `identifier` -- never a `variable`, which is why a converted .tmTheme leaves names uncoloured -- and the package in `pkg::` is `support.class`: the page leaves both bare, so they take the ink here too",
+  "Alert",          "al",   "keyword",     "font-weight: bold",          "invalid.illegal",             ".ace_comment.ace_keyword.ace_operator",                                                           "skylighting's Alert is a TODO / FIXME inside a comment; RStudio tags the same word `comment.keyword.operator`",
+  "Annotation",     "an",   "comment",     NA,                           "comment",                     NA,                                                                                                NA,
+  "Attribute",      "at",   "inline-code", "font-style: italic",         "variable.parameter",          NA,                                                                                                "an R ARGUMENT NAME, and the one token the two highlighters disagree on. Pandoc tags `pct =` as Attribute, so Quarto colours it for free; downlit leaves it as BARE TEXT -- only the `=` beside it is tagged -- and no CSS selector reaches a bare text node. That gap is what inst/pkgdown/BS5/assets/txtheme-at.js closes, so one colour serves both toolchains. RStudio has NO token for it at all (`pct` is an `identifier` like any name), so `ace` stays NA: an argument name is orange on a page and plain ink in RStudio, and no theme can change that",
+  "BaseN",          "bn",   "constant",    NA,                           "constant.numeric",            NA,                                                                                                NA,
+  "BuiltIn",        "bu",   "accent",      NA,                           "support.function",            NA,                                                                                                NA,
+  "Char",           "ch",   "string",      NA,                           "string.quoted.single",        NA,                                                                                                NA,
+  "Comment",        "co",   "comment",     "font-style: italic",         "comment",                     ".ace_comment",                                                                                    NA,
+  "CommentVar",     "cv",   "comment",     NA,                           "comment",                     NA,                                                                                                NA,
+  "Constant",       "cn",   "constant",    NA,                           "constant.language",           ".ace_constant.ace_language",                                                                      NA,
+  "ControlFlow",    "cf",   "keyword",     NA,                           "keyword.control",             NA,                                                                                                NA,
+  "DataType",       "dt",   "datatype",    "font-style: italic",         "entity.name.type",            NA,                                                                                                NA,
+  "DecVal",         "dv",   "constant",    NA,                           "constant.numeric",            ".ace_constant.ace_numeric",                                                                       NA,
+  "Documentation",  "do",   "comment",     NA,                           "comment.block.documentation", NA,                                                                                                NA,
+  "Error",          "er",   "keyword",     "text-decoration: underline", "invalid",                     ".ace_invalid",                                                                                    NA,
+  "Extension",      "ex",   "accent",      NA,                           "support.function",            NA,                                                                                                NA,
+  "Float",          "fl",   "constant",    NA,                           "constant.numeric",            NA,                                                                                                NA,
+  "Function",       "fu",   "accent",      NA,                           "entity.name.function",        ".ace_support.ace_function",                                                                       "a call is `identifier.support.function` only under RStudio's `highlight_r_function_calls` preference -- the students' prefs script turns it on; without it, a call is a plain identifier and takes the ink",
+  "Import",         "im",   "keyword",     NA,                           "keyword.control.import",      NA,                                                                                                NA,
+  "Information",    "in",   "inline-code", NA,                           "constant.other.placeholder",  NA,                                                                                                NA,
+  "Keyword",        "kw",   "keyword",     NA,                           "keyword",                     ".ace_keyword",                                                                                    "RStudio also tags `library(`, `source(`, `stop(`, `return(` and a few others as keywords, where pandoc calls them functions: those words are pink in RStudio and blue on a page, and a selector cannot tell `library` from `function`. It also paints the console prompt and the echoed command, which is RStudio's convention",
+  "Operator",       "op",   "punctuation", NA,                           "punctuation",                 ".ace_punctuation, .ace_punctuation.ace_keyword.ace_operator, .ace_paren.ace_keyword.ace_operator", "downlit tags `(`, `,`, `$` AND `<-` all as `.op` -- 317 of them on one vignette page, the commonest class by far. In the editor the brackets are punctuation grey and only `<-` is pink; pink for all of them makes every bracket shout, so `.op` takes the grey and pink is left to keywords. The one place the port is DELIBERATELY not the editor. In RStudio the same grey goes to commas (`punctuation.keyword.operator` under function-call highlighting, which out-specifies the operator pink by one class) and to brackets when rainbow parentheses are off",
+  "Other",          "ot",   "keyword",     NA,                           "support.other",               NA,                                                                                                "in R, skylighting tags `<-` and the `=` of `c(a = 1)` as Other -- an OPERATOR. It took the Function blue, which gave the assignment arrow the colour of a call; the keyword pink is what the editor gives it, and what RStudio gives every operator",
+  "Preprocessor",   "pp",   "keyword",     NA,                           "meta.preprocessor",           NA,                                                                                                NA,
+  "RegionMarker",   "re",   "comment",     NA,                           "comment",                     NA,                                                                                                NA,
+  "SpecialChar",    "sc",   "keyword",     NA,                           "constant.character.escape",   ".ace_keyword.ace_operator",                                                                       "in R, skylighting tags `|>`, `::`, `$`, `==`, `+`, `~` and `%in%` as SpecialChar -- the operators. It took the constant lavender, the colour of `TRUE` and of a number, which told a reader that a pipe is a value; the keyword pink is the editor's `keyword.operator` and RStudio's one operator token (`keyword.operator`, `.infix` for `%...%`). The same token also marks an escape inside a string (`\\n`), which turns pink with it",
+  "SpecialString",  "ss",   "string",      NA,                           "string.regexp",               NA,                                                                                                NA,
+  "String",         "st",   "string",      NA,                           "string",                      ".ace_string",                                                                                     NA,
+  "Variable",       "va",   "ink",         NA,                           "variable",                    NA,                                                                                                NA,
+  "VerbatimString", "vs",   "string",      NA,                           "string.quoted.other",         NA,                                                                                                NA,
+  "Warning",        "wa",   "keyword",     NA,                           "invalid.deprecated",          NA,                                                                                                NA
 ))
+
+
+# === SECTION: RStudio's own surfaces ==============================================================
+# One row per declaration of the RStudio theme that is NOT a syntax token -- the editor's ground and
+# ink, its markers, the rainbow parentheses, the completion popup and the terminal. A fifth
+# vocabulary (Ace's classes and RStudio's), so a fifth grid; the tokens themselves are TX_TOKENS'
+# `ace` column, which is what makes a word the same colour on a page and in RStudio by construction.
+# slot      the key, unique
+# selector  a CSS selector, written as it stands. Several rows may share one: they fold into one rule.
+# prop      the CSS property the row sets
+# colour    a foreign key into TX_PALETTE
+# alpha     the colour at this opacity instead of opaque; rendered rgba(r,g,b,a)
+# value     where the colour sits inside a longer value: `{c}` is replaced by it. NA means the value IS the colour.
+# style     the extra declarations no palette can express, appended to the rule
+# why       filled only where the row is not self-evident
+#
+# WARNING: only classes RStudio promises to keep. Posit guarantees `ace_*` and `rstheme_*`, and the
+#   terminal's `terminal` / `xterm*`; a theme that leaned on `.rstudio-themes-flat` broke with
+#   2022.02. R/zzz-checks.R refuses any other class, bar the four every bundled theme still uses
+#   (see RSTUDIO_CLASSES).
+TX_ACE <- tx_grid(tx_tribble(
+  ~slot                      , ~selector                                                                                                                                                                                       , ~prop             , ~colour      , ~alpha, ~value                                                           , ~style                                       , ~why,
+  "editor-ground"            , ".ace_editor, .ace_editor_theme"                                                                                                                                                                , "background-color", "code-page"  , NA    , NA                                                               , NA                                           , "the page's own code ground, so a script in RStudio sits on what a code block sits on. WARNING: it must match with NO ancestor -- RStudio reads the ground and the ink of its whole interface off a bare `div.ace_editor` it plants under <body>, and a scoped rule leaves the panes on the default grey",
+  "editor-ink"               , ".ace_editor, .ace_editor_theme"                                                                                                                                                                , "color"           , "ink"        , NA    , NA                                                               , NA                                           , NA,
+  "gutter-ground"            , ".ace_gutter"                                                                                                                                                                                   , "background-color", "code-page"  , NA    , NA                                                               , NA                                           , NA,
+  "gutter-ink"               , ".ace_gutter"                                                                                                                                                                                   , "color"           , "comment"    , NA    , NA                                                               , NA                                           , "the page's line-number colour (the `.theme`'s line-number-color)",
+  "print-margin"             , ".ace_print-margin"                                                                                                                                                                             , "background"      , "border"     , NA    , NA                                                               , "width: 1px;"                                , NA,
+  "cursor"                   , ".ace_cursor"                                                                                                                                                                                   , "color"           , "datatype"   , NA    , NA                                                               , NA                                           , "starless-monokai's editorCursor.foreground",
+  "selection"                , ".ace_marker-layer .ace_selection"                                                                                                                                                              , "background"      , "accent"     , 0.3   , NA                                                               , NA                                           , "a starless theme sets no selection, so VS Code's muted blue shows through; the accent at 0.3 is that blue in our palette",
+  "selection-start"          , ".ace_selection.ace_start"                                                                                                                                                                      , "box-shadow"      , "code-page"  , NA    , "0 0 3px 0px {c}"                                                , "border-radius: 2px;"                        , NA,
+  "active-line"              , ".ace_marker-layer .ace_active-line"                                                                                                                                                            , "background"      , "datatype"   , 0.12  , NA                                                               , NA                                           , "starless-monokai's editor.lineHighlightBackground, #78dce81f",
+  "selected-word"            , ".ace_marker-layer .ace_selected-word"                                                                                                                                                          , "border"          , "punctuation", NA    , "1px solid {c}"                                                  , NA                                           , NA,
+  "bracket-match"            , ".ace_bracket"                                                                                                                                                                                  , "background-color", "punctuation", 0.45  , NA                                                               , "margin: 0 !important; border: 0 !important;", "a fill rather than a frame, as every bundled RStudio theme does: a frame shifts the bracket by a pixel",
+  "step"                     , ".ace_marker-layer .ace_step"                                                                                                                                                                   , "background"      , "gold"       , 0.3   , NA                                                               , NA                                           , NA,
+  "invisible"                , ".ace_invisible"                                                                                                                                                                                , "color"           , "border"     , NA    , NA                                                               , NA                                           , NA,
+  "indent-guide"             , ".ace_indent-guide"                                                                                                                                                                             , "background"      , "border"     , NA    , "linear-gradient(to left, {c} 1px, transparent 1px, transparent)", NA                                           , "a one-pixel rule drawn by a gradient, the form RStudio's own rainbow guides take, instead of the base64 image the bundled themes carry",
+  "fold-ground"              , ".ace_fold"                                                                                                                                                                                     , "background-color", "accent"     , NA    , NA                                                               , NA                                           , NA,
+  "fold-border"              , ".ace_fold"                                                                                                                                                                                     , "border-color"    , "ink"        , NA    , NA                                                               , NA                                           , NA,
+  "find-line"                , ".ace_marker-layer .ace_find_line"                                                                                                                                                              , "background-color", "panel"      , NA    , NA                                                               , "position: absolute; z-index: -1;"           , NA,
+  "foreign-line"             , ".ace_marker-layer .ace_foreign_line"                                                                                                                                                           , "background-color", "panel"      , NA    , NA                                                               , "position: absolute; z-index: -1;"           , NA,
+  "debug-line"               , ".ace_marker-layer .ace_active_debug_line"                                                                                                                                                      , "background-color", "gold"       , 0.25  , NA                                                               , "position: absolute; z-index: -1;"           , NA,
+  "console-error"            , ".ace_console_error"                                                                                                                                                                            , "background-color", "keyword"    , 0.12  , NA                                                               , NA                                           , "the block behind an error in the console. The TEXT of an error, a warning or a message is RStudio's own (VirtualConsole.css, obfuscated classes): no theme reaches it",
+  "no-colour"                , ".nocolor.ace_editor .ace_line span"                                                                                                                                                            , "color"           , "keyword"    , NA    , "{c} !important"                                                 , NA                                           , "what the console echoes when syntax colouring is off -- the keyword colour, which is the convention of every bundled theme and matches the prompt",
+  "md-heading"               , ".ace_heading, .ace_markup.ace_heading"                                                                                                                                                         , "color"           , "heading-1"  , NA    , NA                                                               , NA                                           , "a markdown heading in a .qmd, in the page's own heading colour",
+  "yaml-key"                 , ".ace_meta.ace_tag"                                                                                                                                                                             , "color"           , "keyword"    , NA    , NA                                                               , NA                                           , "a YAML key, which starless-monokai paints as a tag",
+  "completion-ground"        , ".rstudio-themes-dark-menus .ace_editor.ace_autocomplete"                                                                                                                                       , "background"      , "panel"      , NA    , NA                                                               , NA                                           , "the completion popup: the page's raised surface, as the popups of bundled themes are",
+  "completion-border"        , ".rstudio-themes-dark-menus .ace_editor.ace_autocomplete"                                                                                                                                       , "border"          , "border"     , NA    , "solid 1px {c} !important"                                       , NA                                           , NA,
+  "completion-ink"           , ".rstudio-themes-dark-menus .ace_editor.ace_autocomplete"                                                                                                                                       , "color"           , "ink"        , NA    , NA                                                               , NA                                           , NA,
+  "completion-active"        , ".rstudio-themes-dark-menus .ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line, .rstudio-themes-dark-menus .ace_editor.ace_autocomplete .ace_marker-layer .ace_line-hover"         , "background"      , "datatype"   , 0.2   , NA                                                               , "border: none;"                              , NA,
+  "paren-0"                  , "body .ace_paren.ace_paren_color_0"                                                                                                                                                             , "color"           , "accent"     , NA    , NA                                                               , NA                                           , "RStudio's rainbow parentheses, on starless-monokai's six bracket-pair colours in their order, and the prose gold for the seventh. WARNING: the selector is (0,2,1) on purpose. RStudio's own defaults are `.editor_dark .ace_paren_color_N` (0,2,0); a bare `.ace_paren_color_N` loses to them and the theme's colours never show",
+  "paren-1"                  , "body .ace_paren.ace_paren_color_1"                                                                                                                                                             , "color"           , "keyword"    , NA    , NA                                                               , NA                                           , NA,
+  "paren-2"                  , "body .ace_paren.ace_paren_color_2"                                                                                                                                                             , "color"           , "string"     , NA    , NA                                                               , NA                                           , NA,
+  "paren-3"                  , "body .ace_paren.ace_paren_color_3"                                                                                                                                                             , "color"           , "constant"   , NA    , NA                                                               , NA                                           , NA,
+  "paren-4"                  , "body .ace_paren.ace_paren_color_4"                                                                                                                                                             , "color"           , "datatype"   , NA    , NA                                                               , NA                                           , NA,
+  "paren-5"                  , "body .ace_paren.ace_paren_color_5"                                                                                                                                                             , "color"           , "inline-code", NA    , NA                                                               , NA                                           , NA,
+  "paren-6"                  , "body .ace_paren.ace_paren_color_6"                                                                                                                                                             , "color"           , "gold"       , NA    , NA                                                               , NA                                           , NA,
+  "terminal-ground"          , ".terminal"                                                                                                                                                                                     , "background-color", "code-page"  , NA    , NA                                                               , NA                                           , NA,
+  "terminal-ink"             , ".terminal"                                                                                                                                                                                     , "color"           , "ink"        , NA    , NA                                                               , NA                                           , NA,
+  "terminal-viewport"        , ".terminal .xterm-viewport"                                                                                                                                                                     , "background-color", "code-page"  , NA    , NA                                                               , "overflow-y: scroll;"                        , NA,
+  "terminal-selection"       , ".terminal .xterm-selection div"                                                                                                                                                                , "background-color", "accent"     , 0.3   , NA                                                               , "position: absolute;"                        , NA,
+  "terminal-cursor-block"    , ".terminal.xterm-cursor-style-block.focus:not(.xterm-cursor-blink-on) .terminal-cursor"                                                                                                         , "background-color", "datatype"   , NA    , NA                                                               , NA                                           , NA,
+  "terminal-cursor-block-ink", ".terminal.xterm-cursor-style-block.focus:not(.xterm-cursor-blink-on) .terminal-cursor"                                                                                                         , "color"           , "code-page"  , NA    , NA                                                               , NA                                           , NA,
+  "terminal-cursor-bar"      , ".terminal.focus.xterm-cursor-style-bar:not(.xterm-cursor-blink-on) .terminal-cursor::before, .terminal.focus.xterm-cursor-style-underline:not(.xterm-cursor-blink-on) .terminal-cursor::before", "background-color", "datatype"   , NA    , NA                                                               , "content: ''; position: absolute;"           , NA,
+  "terminal-cursor-idle"     , ".terminal:not(.focus) .terminal-cursor"                                                                                                                                                        , "outline"         , "datatype"   , NA    , "1px solid {c}"                                                  , "outline-offset: -1px;"                      , NA,
+  "xterm-invert-ink"         , ".xtermInvertColor"                                                                                                                                                                             , "color"           , "code-page"  , NA    , NA                                                               , NA                                           , NA,
+  "xterm-invert-ground"      , ".xtermInvertBgColor"                                                                                                                                                                           , "background-color", "ink"        , NA    , NA                                                               , NA                                           , NA
+))
+
+# The terminal's sixteen ANSI colours, from the palette: the eight hues, then their bright twins.
+# Colours 16 to 255 are the fixed xterm cube and grey ramp, a standard rather than a decision, so the
+# emitter computes them and they are no row here.
+TX_ANSI <- tx_grid(tx_tribble(
+  ~index, ~colour,
+     0L, "border",
+     1L, "keyword",
+     2L, "string",
+     3L, "gold",
+     4L, "accent",
+     5L, "constant",
+     6L, "datatype",
+     7L, "ink",
+     8L, "comment",
+     9L, "keyword",
+    10L, "string",
+    11L, "gold",
+    12L, "accent-hover",
+    13L, "constant",
+    14L, "datatype",
+    15L, "emphasis"
+), key = 1L)
 
 
 # === SECTION: what bootstrap 5.3 actually offers ==================================================

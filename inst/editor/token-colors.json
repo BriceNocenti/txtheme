@@ -7,7 +7,7 @@
     "textMateRules": [
         {
             "name": "txtheme accent",
-            "scope": ["entity.name.function", "support.function", "support.other"],
+            "scope": ["entity.name.function", "support.function"],
             "settings": {
                 "foreground": "#61afef"
             }
@@ -21,7 +21,7 @@
         },
         {
             "name": "txtheme constant",
-            "scope": ["constant.character.escape", "constant.language", "constant.numeric"],
+            "scope": ["constant.language", "constant.numeric"],
             "settings": {
                 "foreground": "#ab9df2"
             }
@@ -42,7 +42,7 @@
         },
         {
             "name": "txtheme keyword",
-            "scope": ["invalid.deprecated", "keyword", "keyword.control", "keyword.control.import", "meta.preprocessor"],
+            "scope": ["constant.character.escape", "invalid.deprecated", "keyword", "keyword.control", "keyword.control.import", "meta.preprocessor", "support.other"],
             "settings": {
                 "foreground": "#ff6188"
             }

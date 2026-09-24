@@ -61,7 +61,8 @@ tx_outputs <- function(path = ".") {
     "inst/brand/_brand.yml"                           = emit_brand_unified(),
     "inst/brand/_brand-dark.yml"                      = emit_brand_single("dark"),
     "inst/brand/_brand-light.yml"                     = emit_brand_single("light"),
-    "inst/editor/token-colors.json"                   = emit_editor_json("dark"))
+    "inst/editor/token-colors.json"                   = emit_editor_json("dark"),
+    "inst/rstudio/txtheme.rstheme"                    = emit_rstheme("dark"))
 
   # The .theme is written TWICE on purpose, and it is one emitter either way: `_extensions/` is
   # .Rbuildignore'd (a Quarto user gets it with `quarto add`, never from the R library), while the

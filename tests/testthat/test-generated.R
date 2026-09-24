@@ -25,7 +25,8 @@ test_that("every generated file says so on its first line, and every hand-writte
   hand <- c("inst/prose/annotations.scss", "inst/prose/prose.scss",
             "inst/pkgdown/BS5/assets/txtheme-at.js",
             "inst/pkgdown/BS5/templates/in-header.html", "_extensions/txtheme/_extension.yml",
-            "_extensions/txtheme/txtheme-toggle.html", "_extensions/txtheme/txtheme-scheme.html")
+            "_extensions/txtheme/txtheme-toggle.html", "_extensions/txtheme/txtheme-scheme.html",
+            "_extensions/txtheme/renvoi.lua", "_extensions/txtheme/liens.lua")
   for (f in hand)
     expect_match(paste(readLines(file.path(src_root(), f), n = 3L), collapse = " "),
                  "PURPOSE", fixed = TRUE, info = f)

@@ -110,8 +110,50 @@ tx_check_grids <- function() {
   if (any(nchar(cls[!is.na(cls)]) != 2L)) .tx_stop("TX_TOKENS: a `class` is not two letters")
   for (nm in names(TX_TOKENS)) if (!TX_TOKENS[[nm]]$colour %in% names(TX_PALETTE))
     .tx_stop("token '", nm, "': `colour` = '", TX_TOKENS[[nm]]$colour, "' is in no TX_PALETTE row")
+  for (nm in names(TX_TOKENS)) .tx_check_rstudio_selector(paste0("token '", nm, "'"), TX_TOKENS[[nm]]$ace)
+
+  # --- TX_ACE / TX_ANSI ---------------------------------------------------------------------------
+  if (anyDuplicated(names(TX_ACE))) .tx_stop("TX_ACE has a duplicated `slot`")
+  for (nm in names(TX_ACE)) {
+    r <- TX_ACE[[nm]]
+    if (!r$colour %in% names(TX_PALETTE))
+      .tx_stop("ace slot '", nm, "': `colour` = '", r$colour, "' is in no TX_PALETTE row")
+    if (tx_empty(r$prop)) .tx_stop("ace slot '", nm, "': every row needs a `prop`")
+    if (!tx_empty(r$value) && !grepl("{c}", r$value, fixed = TRUE))
+      .tx_stop("ace slot '", nm, "': a `value` must say where the colour goes, with {c}")
+    .tx_check_rstudio_selector(paste0("ace slot '", nm, "'"), r$selector)
+    if (grepl("ace_paren_color_", r$selector, fixed = TRUE) &&
+        !grepl("^body \\.ace_paren\\.ace_paren_color_[0-6]$", r$selector))
+      .tx_stop("ace slot '", nm, "': a rainbow parenthesis is written `body .ace_paren.ace_paren_color_N`, ",
+               "which out-specifies RStudio's own `.editor_dark .ace_paren_color_N` -- anything less ",
+               "loses to it and the colour never shows")
+  }
+  if (!identical(sort(as.integer(names(TX_ANSI))), 0:15))
+    .tx_stop("TX_ANSI is not the sixteen ANSI colours 0 to 15")
+  for (nm in names(TX_ANSI)) if (!TX_ANSI[[nm]]$colour %in% names(TX_PALETTE))
+    .tx_stop("ANSI colour ", nm, ": `colour` = '", TX_ANSI[[nm]]$colour, "' is in no TX_PALETTE row")
 
   invisible(TRUE)
+}
+
+# The classes an RStudio theme may name. Posit guarantees `ace_*` and `rstheme_*` and documents the
+# terminal's `terminal` / `xterm*`; everything else "is subject to change at anytime" -- and did:
+# `.rstudio-themes-flat` vanished in 2022.02 and broke every theme that leaned on it. The three
+# exact names are the ones every theme RStudio bundles still carries, so they break with RStudio's
+# own themes or not at all.
+RSTUDIO_CLASSES <- list(prefix = c("ace_", "rstheme_", "terminal", "xterm"),
+                        exact  = c("nocolor", "rstudio-themes-dark-menus", "focus"))
+
+.tx_check_rstudio_selector <- function(where, selector) {
+  if (tx_empty(selector)) return(invisible())
+  cls <- regmatches(selector, gregexpr("\\.[A-Za-z_][A-Za-z0-9_-]*", selector))[[1]]
+  cls <- substring(cls, 2L)
+  ok  <- cls %in% RSTUDIO_CLASSES$exact |
+    Reduce(`|`, lapply(RSTUDIO_CLASSES$prefix, startsWith, x = cls), logical(length(cls)))
+  if (!all(ok))
+    .tx_stop(where, ": the RStudio selector names ", paste0(".", cls[!ok], collapse = ", "),
+             ", a class RStudio does not promise to keep (see RSTUDIO_CLASSES)")
+  invisible()
 }
 
 .onLoad <- function(libname, pkgname) {

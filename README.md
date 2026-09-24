@@ -63,6 +63,14 @@ output:
     highlight: !expr txtheme::txtheme_file("highlight/txtheme-light.theme")
 ```
 
+**RStudio** — one plain-CSS file, which needs no package beyond `rstudioapi`:
+
+```r
+rstudioapi::addTheme(txtheme::txtheme_file("rstudio/txtheme.rstheme"), apply = TRUE, force = TRUE)
+```
+
+A course ships a copy of the file in its project instead, so a student's machine needs no `txtheme`. Function calls and paired parentheses take their colours only under RStudio's `highlight_r_function_calls` and `rainbow_parentheses` preferences.
+
 **The editor** — `inst/editor/token-colors.json` holds a ready `textMateRules` array to paste under `editor.tokenColorCustomizations` in `settings.json`. This step is a paste by construction: editor settings have no include mechanism, so no repository layout could make it automatic.
 
 ## The one rule
@@ -78,13 +86,15 @@ Everything under `inst/` and `_extensions/` is rewritten from the grids, and `bu
 
 ## What is in it
 
-Four grids in `R/aaa-palette.R`, split by the namespace each key belongs to, because a colour name is ours, a `--bs-*` property is Bootstrap's, a syntax token is pandoc's and a brand role is Quarto's:
+The grids in `R/aaa-palette.R`, split by the namespace each key belongs to, because a colour name is ours, a `--bs-*` property is Bootstrap's, a syntax token is pandoc's, a brand role is Quarto's and a selector of the RStudio theme is Ace's:
 
 | grid | one row per |
 |---|---|
 | `TX_PALETTE` | colour — its hex, its OKLCH coordinate, the construction it came from |
 | `TX_SLOTS` | place a colour is painted — a Bootstrap property, a custom property, or a selector |
-| `TX_TOKENS` | syntax token, all 31 of skylighting's, once each |
+| `TX_TOKENS` | syntax token, all 31 of skylighting's, once each — and the RStudio selector it translates to |
+| `TX_ACE` | declaration of the RStudio theme that is not a token: editor ground, markers, rainbow parentheses, terminal |
+| `TX_ANSI` | the terminal's sixteen ANSI colours |
 | `TX_BRAND` | Quarto brand colour role |
 | `TX_FONTS` | shipped face — its family, weight and style |
 
